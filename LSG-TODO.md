@@ -45,26 +45,26 @@ This document charts our path from "barely functional prototype" to "instrument 
 
 *Because hope is not a strategy.*
 
-- [ ] Graceful degradation when tools are missing — fail like a gentleman
-- [ ] Retry logic for network failures — the internet is held together with duct tape and prayers
-- [ ] Timeout handling for external commands — some processes, like some meetings, must be forcibly terminated
-- [ ] URL validation before processing — garbage in, garbage out, but let's at least check at the door
+- [x] Graceful degradation when tools are missing — fail like a gentleman
+- [x] Retry logic for network failures — the internet is held together with duct tape and prayers
+- [x] Timeout handling for external commands — some processes, like some meetings, must be forcibly terminated
+- [x] URL validation before processing — garbage in, garbage out, but let's at least check at the door
 
 ### 1.3 Output Quality
 
 *Lies, damned lies, and synthetic source code.*
 
-- [ ] Improve pseudo-source fidelity — make our fabrications more convincing
-- [ ] Parameter type inference from URL patterns — `?id=1` is probably an integer, one hopes
-- [ ] Realistic model schemas from form analysis — if it asks for an email, it probably stores one
-- [ ] HTTP method inference — distinguishing GET from POST is left as an exercise to the reader
+- [x] Improve pseudo-source fidelity — make our fabrications more convincing
+- [x] Parameter type inference from URL patterns — `?id=1` is probably an integer, one hopes
+- [x] Realistic model schemas from form analysis — if it asks for an email, it probably stores one
+- [x] HTTP method inference — distinguishing GET from POST is left as an exercise to the reader
 
 ### 1.4 Testing
 
 *Trust, but verify. Then verify again. Then write a test.*
 
-- [ ] Unit tests for core functions — the bare minimum of professional integrity
-- [ ] Integration tests with mock targets — controlled environments for controlled chaos
+- [x] Unit tests for core functions — the bare minimum of professional integrity
+- [x] Integration tests with mock targets — controlled environments for controlled chaos
 - [ ] Benchmarks against known targets — how wrong are we, exactly?
 
 ---
@@ -75,27 +75,27 @@ This document charts our path from "barely functional prototype" to "instrument 
 
 *Teaching an old dog new tricks, or at least a new flag.*
 
-- [ ] Auto-detect black-box mode when source directory is empty — absence of evidence as evidence of absence
-- [ ] Add `--blackbox` flag to `shannon.mjs` — explicit is better than implicit, they say
-- [ ] Invoke LSG automatically in pre-recon phase — seamless integration, or so we claim
-- [ ] Pass LSG output to downstream agents — the synthetic becomes the real
+- [x] Auto-detect black-box mode when source directory is empty — absence of evidence as evidence of absence
+- [x] Add `--blackbox` flag to `shannon.mjs` — explicit is better than implicit, they say
+- [x] Invoke LSG automatically in pre-recon phase — seamless integration, or so we claim
+- [x] Pass LSG output to downstream agents — the synthetic becomes the real
 
 ### 2.2 Configuration System
 
 *For those who prefer their chaos organized.*
 
-- [ ] YAML config file support — see `configs/blackbox-templates/` for examples of our hubris
-- [ ] Authenticated scanning — because sometimes you need to log in before you break in
-- [ ] Scope limiting — include/exclude patterns for the discerning attacker
-- [ ] Rate limiting — politeness as a service
+- [x] YAML config file support — see `configs/blackbox-templates/` for examples of our hubris
+- [x] Authenticated scanning — because sometimes you need to log in before you break in
+- [x] Scope limiting — include/exclude patterns for the discerning attacker
+- [x] Rate limiting — politeness as a service
 
 ### 2.3 Agent Coordination
 
 *Herding cats, but the cats are LLMs.*
 
-- [ ] Update prompts for synthetic sources — teaching AI to work with our fabrications
-- [ ] Add metadata markers — "WARNING: This code is a beautiful lie"
-- [ ] Ensure agents understand limitations — managing expectations, always managing expectations
+- [x] Update prompts for synthetic sources — teaching AI to work with our fabrications
+- [x] Add metadata markers — "WARNING: This code is a beautiful lie"
+- [x] Ensure agents understand limitations — managing expectations, always managing expectations
 
 ---
 

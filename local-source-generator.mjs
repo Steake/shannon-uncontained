@@ -7,6 +7,16 @@ import chalk from 'chalk';
 import playwright from 'playwright';
 import cliProgress from 'cli-progress';
 
+// Import resilience utilities
+import {
+    withRetry,
+    withTimeout,
+    withFallback,
+    validateUrl,
+    checkToolsAvailability,
+    isRetryableError
+} from './src/local-source-generator/utils/resilience.js';
+
 // Core reconnaissance tools
 const TOOLS = {
     // Shannon already uses these: 
@@ -23,11 +33,32 @@ const TOOLS = {
     gau: 'gau --subs',  // Fetch known URLs from archives
 };
 
+// Tool timeout configuration (in ms)
+const TOOL_TIMEOUTS = {
+    nmap: 120000,     // 2 minutes
+    subfinder: 60000,  // 1 minute
+    whatweb: 30000,    // 30 seconds
+    gau: 60000,        // 1 minute
+    katana: 90000,     // 1.5 minutes
+    playwright: 60000, // 1 minute
+};
+
+
 // Main generator
 export async function generateLocalSource(webUrl, outputDir) {
     console.log(chalk.yellow.bold('\n🔍 LOCAL SOURCE GENERATOR'));
 
-    const targetDomain = new URL(webUrl).hostname;
+    // Validate URL
+    let parsedUrl;
+    try {
+        parsedUrl = validateUrl(webUrl);
+        console.log(chalk.green(`  ✅ Target URL validated: ${parsedUrl.hostname}`));
+    } catch (error) {
+        console.error(chalk.red(`  ❌ ${error.message}`));
+        throw error;
+    }
+
+    const targetDomain = parsedUrl.hostname;
     const sourceDir = path.join(outputDir, 'repos', targetDomain);
 
     await fs.ensureDir(sourceDir);
@@ -35,6 +66,18 @@ export async function generateLocalSource(webUrl, outputDir) {
     await fs.ensureDir(path.join(sourceDir, 'models'));
     await fs.ensureDir(path.join(sourceDir, 'config'));
     await fs.ensureDir(path.join(sourceDir, 'deliverables'));
+
+    // Check tool availability
+    const requiredTools = ['nmap', 'subfinder', 'whatweb', 'gau', 'katana'];
+    const toolStatus = await checkToolsAvailability(requiredTools);
+
+    const availableTools = Object.entries(toolStatus).filter(([_, available]) => available).map(([name]) => name);
+    const missingTools = Object.entries(toolStatus).filter(([_, available]) => !available).map(([name]) => name);
+
+    if (missingTools.length > 0) {
+        console.log(chalk.yellow(`  ⚠️  Missing tools (will skip): ${missingTools.join(', ')}`));
+    }
+    console.log(chalk.blue(`  🔧 Available tools: ${availableTools.join(', ') || 'none'}`));
 
     // Initialize Progress Bar
     const bar = new cliProgress.SingleBar({
@@ -85,7 +128,7 @@ export async function generateLocalSource(webUrl, outputDir) {
     return sourceDir;
 }
 
-// Wrapper for nmap
+// Wrapper for nmap with resilience
 async function runNmap(webUrl) {
     const domain = new URL(webUrl).hostname;
     console.log(chalk.blue(`  🌩️  Running nmap on ${domain}...`));
@@ -93,13 +136,26 @@ async function runNmap(webUrl) {
     // Attempt to fix environment if nmap-services is missing
     await setupNmapEnvironment();
 
-    try {
-        const result = await $`${TOOLS.nmap.split(' ')} ${domain}`;
-        return result.stdout;
-    } catch (error) {
-        console.log(chalk.yellow(`    ⚠️  Nmap failed: ${error.message}`));
-        return `Nmap failed: ${error.message}`;
-    }
+    return withFallback(
+        () => withTimeout(
+            () => withRetry(
+                async () => {
+                    const result = await $`${TOOLS.nmap.split(' ')} ${domain}`;
+                    return result.stdout;
+                },
+                {
+                    maxRetries: 2,
+                    baseDelay: 2000,
+                    shouldRetry: isRetryableError,
+                    onRetry: (err, attempt) => console.log(chalk.yellow(`    ↻ Retrying nmap (attempt ${attempt})...`))
+                }
+            ),
+            TOOL_TIMEOUTS.nmap,
+            'nmap scan'
+        ),
+        `Nmap scan skipped or failed for ${domain}`,
+        { operationName: 'nmap', logError: true }
+    );
 }
 
 // Helper: Setup Nmap environment
@@ -132,30 +188,40 @@ async function setupNmapEnvironment() {
     }
 }
 
-// Wrapper for subfinder
+// Wrapper for subfinder with resilience
 async function runSubfinder(domain) {
     console.log(chalk.blue(`  🔍 Running subfinder on ${domain}...`));
-    try {
-        const result = await $`${TOOLS.subfinder.split(' ')} ${domain}`;
-        return result.stdout;
-    } catch (error) {
-        console.log(chalk.yellow(`    ⚠️  Subfinder failed: ${error.message}`));
-        return `Subfinder failed: ${error.message}`;
-    }
+
+    return withFallback(
+        () => withTimeout(
+            async () => {
+                const result = await $`${TOOLS.subfinder.split(' ')} ${domain}`;
+                return result.stdout;
+            },
+            TOOL_TIMEOUTS.subfinder,
+            'subfinder scan'
+        ),
+        `Subfinder skipped or failed for ${domain}`,
+        { operationName: 'subfinder', logError: true }
+    );
 }
 
-// Wrapper for whatweb
+// Wrapper for whatweb with resilience
 async function runWhatweb(webUrl) {
     console.log(chalk.blue(`  🌐 Running whatweb on ${webUrl}...`));
-    try {
-        const result = await $`${TOOLS.whatweb.split(' ')} ${webUrl}`;
-        // Parse whatweb output for simple object representation
-        // ... (Parsing logic can be added here if needed, for now just return raw output)
-        return result.stdout;
-    } catch (error) {
-        console.log(chalk.yellow(`    ⚠️  Whatweb failed: ${error.message}`));
-        return `Whatweb failed: ${error.message}`;
-    }
+
+    return withFallback(
+        () => withTimeout(
+            async () => {
+                const result = await $`${TOOLS.whatweb.split(' ')} ${webUrl}`;
+                return result.stdout;
+            },
+            TOOL_TIMEOUTS.whatweb,
+            'whatweb scan'
+        ),
+        `Whatweb skipped or failed for ${webUrl}`,
+        { operationName: 'whatweb', logError: true }
+    );
 }
 
 // Discover endpoints via crawling
@@ -483,7 +549,7 @@ function identifyCommandInjectionCandidates(endpoints) {
     if (candidates.length === 0) return 'None identified from black-box analysis';
 
     return candidates.map(c =>
-        `- ${c.method} ${c.path} (parameter: ${c.params.find(p => dangerousParams.some(dp => p.name.includes(dp))).name})`
+        `- ${c.method} ${c.path} (parameter: ${c.params.find(p => dangerousParams.some(dp => p.name.includes(dp)))?.name})`
     ).join('\n');
 }
 

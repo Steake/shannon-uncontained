@@ -27,6 +27,7 @@ export function showHelp() {
 
   console.log(chalk.yellow.bold('OPTIONS:'));
   console.log('  --config <file>      YAML configuration file for authentication and testing parameters');
+  console.log('  --blackbox           Force black-box mode (generate synthetic source from reconnaissance)');
   console.log('  --pipeline-testing   Use minimal prompts for fast pipeline testing (creates minimal deliverables)');
   console.log('  --disable-loader     Disable the animated progress loader (useful when logs interfere with spinner)\n');
 
