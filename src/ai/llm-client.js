@@ -5,9 +5,6 @@ import { $ } from 'zx';
 import fs from 'fs/promises';
 import path from 'path';
 
-// Import internal tools directly
-import { saveDeliverableTool, generateTotpTool } from '../../mcp-server/src/index.js';
-
 /**
  * Detect and configure LLM provider based on environment variables
  * 

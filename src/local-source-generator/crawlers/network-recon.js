@@ -1,4 +1,4 @@
-import { $, fs, path } from 'zx';
+import { $ } from 'zx';
 import chalk from 'chalk';
 
 export async function runNetworkRecon(webUrl, options = {}) {
