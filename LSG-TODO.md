@@ -196,23 +196,23 @@ This document charts our path from "barely functional prototype" to "instrument 
 
 ### 4.1 CI/CD Integration
 
-- [ ] GitHub Actions workflow template — DevSecOps buzzword compliance
+- [x] GitHub Actions workflow template — DevSecOps buzzword compliance
 - [ ] GitLab CI template — for the self-hosted crowd
 - [ ] Jenkins pipeline — because some organizations never left 2015
-- [ ] Artifact upload — proof that something happened
+- [x] Artifact upload — proof that something happened
 
 ### 4.2 Reporting
 
-- [ ] Structured JSON output — for robots
-- [ ] HTML reports — for humans who pretend to read them
-- [ ] SARIF format — GitHub Security tab population
+- [x] Structured JSON output — for robots
+- [x] HTML reports — for humans who pretend to read them
+- [x] SARIF format — GitHub Security tab population
 - [ ] Jira/Linear integration — automated ticket creation (automated developer sadness)
 
 ### 4.3 Compliance Theater
 
-- [ ] OWASP Top 10 mapping — the canonical list of ways to fail
+- [x] OWASP Top 10 mapping — the canonical list of ways to fail
 - [ ] PCI-DSS tagging — for those handling other people's money
-- [ ] Audit trail evidence — CYA documentation
+- [x] Audit trail evidence — CYA documentation
 
 ---
 
