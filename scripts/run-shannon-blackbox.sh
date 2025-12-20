@@ -6,7 +6,7 @@
 set -e
 
 TARGET_URL="$1"
-CONFIG="${2:-configs/blackbox-templates/example-blackbox-config. yaml}"
+CONFIG="${2:-configs/blackbox-templates/example-blackbox-config.yaml}"
 
 if [ -z "$TARGET_URL" ]; then
     echo "Usage:  $0 <target-url> [config-file]"
