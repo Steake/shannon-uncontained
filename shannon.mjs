@@ -39,6 +39,9 @@ import { handleDeveloperCommand } from './src/cli/command-handler.js';
 import { showHelp, displaySplashScreen } from './src/cli/ui.js';
 import { validateWebUrl, validateRepoPath } from './src/cli/input-validator.js';
 
+// Local Source Generator (Black-box mode)
+import { generateLocalSource } from './local-source-generator.mjs';
+
 // Error Handling
 import { PentestError, logError } from './src/error-handling.js';
 
@@ -373,6 +376,7 @@ let pipelineTestingMode = false;
 let disableLoader = false;
 const nonFlagArgs = [];
 let developerCommand = null;
+let blackboxMode = false;
 const developerCommands = ['--run-phase', '--run-all', '--rollback-to', '--rerun', '--status', '--list-agents', '--cleanup'];
 
 for (let i = 0; i < args.length; i++) {
@@ -406,6 +410,8 @@ for (let i = 0; i < args.length; i++) {
     // Add non-flag args (excluding --pipeline-testing and --disable-loader)
     nonFlagArgs.push(...remainingArgs.filter(arg => arg !== '--pipeline-testing' && arg !== '--disable-loader'));
     break; // Stop parsing after developer command
+  } else if (args[i] === '--blackbox' || args[i] === '--black-box') {
+    blackboxMode = true;
   } else if (!args[i].startsWith('-')) {
     nonFlagArgs.push(args[i]);
   }
@@ -472,8 +478,51 @@ if (disableLoader) {
   console.log(chalk.yellow('⚙️  LOADER DISABLED - Progress indicator will not be shown\n'));
 }
 
+// Black-box mode: Auto-detect if source directory is empty or doesn't exist
+let effectiveRepoPath = repoPathValidation.path;
+let isBlackboxMode = blackboxMode;
+
+if (!blackboxMode) {
+  // Check if repo directory is empty or has no meaningful source files
+  try {
+    const repoFiles = await fs.readdir(repoPathValidation.path);
+    const meaningfulFiles = repoFiles.filter(f =>
+      !f.startsWith('.') &&
+      f !== 'node_modules' &&
+      f !== 'deliverables' &&
+      f !== 'repos'
+    );
+
+    if (meaningfulFiles.length === 0) {
+      console.log(chalk.yellow('📂 Source directory appears empty - auto-enabling black-box mode'));
+      isBlackboxMode = true;
+    }
+  } catch (error) {
+    // Directory doesn't exist or can't be read - enable black-box mode
+    console.log(chalk.yellow(`📂 Cannot read source directory (${error.code}) - enabling black-box mode`));
+    isBlackboxMode = true;
+  }
+}
+
+// If black-box mode, run LSG to generate synthetic source
+if (isBlackboxMode) {
+  console.log(chalk.magenta.bold('\n🕵️ BLACK-BOX MODE ENABLED'));
+  console.log(chalk.magenta('   Generating synthetic source from target reconnaissance...\n'));
+
+  try {
+    // Use current directory for output, LSG will create repos/<domain> structure
+    const outputDir = process.cwd();
+    effectiveRepoPath = await generateLocalSource(webUrl, outputDir);
+    console.log(chalk.green(`\n✅ Synthetic source generated at: ${effectiveRepoPath}\n`));
+  } catch (error) {
+    console.log(chalk.red(`\n❌ Black-box reconnaissance failed: ${error.message}`));
+    console.log(chalk.yellow('   Falling back to empty source mode - analysis will be limited.\n'));
+    // Continue with original path, agents will work with what they have
+  }
+}
+
 try {
-  const result = await main(webUrl, repoPathValidation.path, configPath, pipelineTestingMode, disableLoader);
+  const result = await main(webUrl, effectiveRepoPath, configPath, pipelineTestingMode, disableLoader);
   console.log(chalk.green.bold('\n📄 FINAL REPORT AVAILABLE:'));
   console.log(chalk.cyan(result.reportPath));
   console.log(chalk.green.bold('\n📂 AUDIT LOGS AVAILABLE:'));
