@@ -155,7 +155,7 @@ Shannon includes a GitHub Actions workflow for automated security scanning:
 
 **Scheduled Scanning:**
 
-The workflow runs automatically every Monday at 2am UTC (configurable in the workflow file).
+The workflow runs automatically weekly on Monday at 2am UTC (configurable in the workflow file).
 
 **Integration Example:**
 
