@@ -12,7 +12,7 @@ export async function runJSAnalysis(webUrl, jsFiles, options = {}) {
       const content = response.data;
       
       // Extract API endpoints
-      const apiEndpoints = content.match(/['""`]\/api\/[^'""`]+['""`]/g) || [];
+      const apiEndpoints = content.match(/['"`]\/api\/[^'"`]+['"`]/g) || [];
       
       // Check for auth patterns
       const hasAuth = /login|auth|token|session/i.test(content);
