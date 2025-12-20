@@ -6,20 +6,20 @@ export async function runJSAnalysis(webUrl, jsFiles, options = {}) {
   
   const analysis = [];
   
-  for (const jsUrl of jsFiles. slice(0, 10)) { // Limit to first 10 files
+  for (const jsUrl of jsFiles.slice(0, 10)) { // Limit to first 10 files
     try {
       const response = await axios.get(jsUrl);
       const content = response.data;
       
       // Extract API endpoints
-      const apiEndpoints = content.match(/['"`](/api/[^'"`]+)['"`]/g) || [];
+      const apiEndpoints = content.match(new RegExp("['\"`](/api/[^'\"`]+)['\"`]", 'g')) || [];
       
       // Check for auth patterns
       const hasAuth = /login|auth|token|session/i.test(content);
       
       analysis.push({
         url: jsUrl,
-        endpoints: apiEndpoints. map(e => e.replace(/['"`]/g, '')),
+        endpoints: apiEndpoints.map(e => e.replace(/['"`]/g, '')),
         hasAuth
       });
     } catch (error) {
