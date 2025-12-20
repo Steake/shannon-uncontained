@@ -5,8 +5,6 @@
 
 <div align="center">
 
-<img src="./assets/shannon-screen.png" alt="Shannon Screen" width="100%">
-
 # Shannon Uncontained
 
 ### *The AI Pentester, Liberated from Its Container*
