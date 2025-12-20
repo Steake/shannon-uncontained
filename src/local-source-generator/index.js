@@ -4,26 +4,26 @@
 
 import { fs, path } from 'zx';
 import chalk from 'chalk';
-import { runNetworkRecon } from './crawlers/network-recon. js';
+import { runNetworkRecon } from './crawlers/network-recon.js';
 import { runActiveCrawl } from './crawlers/active-crawl.js';
 import { runJSAnalysis } from './crawlers/js-analysis.js';
 import { buildPseudoSource } from './generators/pseudo-source-builder.js';
 
 export async function generateLocalSource(webUrl, outputDir, options = {}) {
-  console.log(chalk.cyan. bold('\n🔍 LOCAL SOURCE GENERATOR'));
-  console.log(chalk.gray('─'. repeat(60)));
+  console.log(chalk.cyan.bold('\n🔍 LOCAL SOURCE GENERATOR'));
+  console.log(chalk.gray('─'.repeat(60)));
   
   const targetDomain = new URL(webUrl).hostname;
   const sourceDir = path.join(outputDir, 'repos', targetDomain);
   
   await fs.ensureDir(sourceDir);
   await fs.ensureDir(path.join(sourceDir, 'routes'));
-  await fs.ensureDir(path. join(sourceDir, 'models'));
+  await fs.ensureDir(path.join(sourceDir, 'models'));
   await fs.ensureDir(path.join(sourceDir, 'config'));
-  await fs.ensureDir(path. join(sourceDir, 'deliverables'));
+  await fs.ensureDir(path.join(sourceDir, 'deliverables'));
   
   await fs.writeFile(
-    path.join(sourceDir, '. synthetic-source'),
+    path.join(sourceDir, '.synthetic-source'),
     JSON.stringify({ generated: new Date().toISOString(), url: webUrl })
   );
   
@@ -34,7 +34,7 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
   const crawlData = await runActiveCrawl(webUrl, options);
   
   console.log(chalk.yellow('\n📜 Phase 3: JavaScript Analysis'));
-  const jsData = await runJSAnalysis(webUrl, crawlData. jsFiles, options);
+  const jsData = await runJSAnalysis(webUrl, crawlData.jsFiles, options);
   
   console.log(chalk.yellow('\n🏗️  Phase 4: Building Synthetic Source'));
   await buildPseudoSource({
@@ -45,7 +45,7 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
     jsData
   });
   
-  console.log(chalk.green. bold('\n✅ Synthetic source generated successfully!'));
+  console.log(chalk.green.bold('\n✅ Synthetic source generated successfully!'));
   console.log(chalk.gray(`Location: ${sourceDir}`));
   
   return sourceDir;
