@@ -141,52 +141,52 @@ This document charts our path from "barely functional prototype" to "instrument 
 
 *Haunting applications with synthetic requests.*
 
-- [ ] Replay sanitized traffic patterns — echoes of legitimate users
-- [ ] Adversarial fuzzing lite — chaos, but artisanal
-- [ ] Race condition simulation — because timing is everything
-- [ ] Behavioral mimicry — looking human to machines
+- [x] Replay sanitized traffic patterns — echoes of legitimate users
+- [x] Adversarial fuzzing lite — chaos, but artisanal
+- [x] Race condition simulation — because timing is everything
+- [x] Behavioral mimicry — looking human to machines
 
 ### 3.6 Shadow IT Hunter
 
 *Finding what they forgot they deployed.*
 
-- [ ] Correlate assets with cloud ranges — connecting dots across the digital sky
-- [ ] Detect forgotten dev/staging environments — the skeletons in every org's closet
-- [ ] Identify S3 buckets in client-side code — "oops" as a security posture
-- [ ] Git leakage detection — `.git` folder reconstruction attempts
+- [x] Correlate assets with cloud ranges — connecting dots across the digital sky
+- [x] Detect forgotten dev/staging environments — the skeletons in every org's closet
+- [x] Identify S3 buckets in client-side code — "oops" as a security posture
+- [x] Git leakage detection — `.git` folder reconstruction attempts
 
 ### 3.7 "Dark Matter" Analysis
 
 *Detecting the invisible through its gravitational effects.*
 
-- [ ] Hidden endpoints in comments — developers leaving breadcrumbs
-- [ ] Obfuscated code pattern detection — suspicion as a heuristic
-- [ ] WebSocket identification — the forgotten protocol
-- [ ] Hidden directory scanning — `/admin`, `/backup`, and other classics
+- [x] Hidden endpoints in comments — developers leaving breadcrumbs
+- [x] Obfuscated code pattern detection — suspicion as a heuristic
+- [x] WebSocket identification — the forgotten protocol
+- [x] Hidden directory scanning — `/admin`, `/backup`, and other classics
 
 ### 3.8 The IQ 9000 Hacker
 
 *Techniques that make you feel clever, possibly too clever.*
 
-- [ ] Response latency analysis — distinguishing serverless from persistent infra
-- [ ] "Dark" endpoint prediction via naming conventions — reverse-engineering developer psychology
-- [ ] Side-channel dependency fingerprinting — inferring `package.json` without seeing it
-- [ ] Differential timing for database relationships — foreign keys through the looking glass
-- [ ] Legacy debt identification via JS archaeology — old code never dies, it just becomes vulnerable
-- [ ] Multi-egress CDN/WAF bypass mapping — regional variations in security theater
-- [ ] LLM-driven state machine analysis — hypothesizing business logic the hard way
+- [x] Response latency analysis — distinguishing serverless from persistent infra
+- [x] "Dark" endpoint prediction via naming conventions — reverse-engineering developer psychology
+- [x] Side-channel dependency fingerprinting — inferring `package.json` without seeing it
+- [x] Differential timing for database relationships — foreign keys through the looking glass
+- [x] Legacy debt identification via JS archaeology — old code never dies, it just becomes vulnerable
+- [x] Multi-egress CDN/WAF bypass mapping — regional variations in security theater
+- [x] LLM-driven state machine analysis — hypothesizing business logic the hard way
 
 ### 3.9 They Did It Wrong (And We Found It)
 
 *A celebration of developer optimism meeting production reality.*
 
-- [ ] "God Mode" flag detection — `?debug=true`, `?admin=1`, `?bypass=all`
-- [ ] CSS-hidden admin features — security through `display:none`
-- [ ] Hardcoded `localhost` in production bundles — "it works on my machine" made permanent
-- [ ] Build path fingerprinting — `/Users/dev/work/...` tells a story
-- [ ] Misconfigured CORS policies — `Access-Control-Allow-Origin: *` is not a policy, it's a prayer
-- [ ] CVE correlation with hidden dependencies — knowing what they run before they do
-- [ ] Leaked TODOs and FIXMEs — reading developers' inner monologue
+- [x] "God Mode" flag detection — `?debug=true`, `?admin=1`, `?bypass=all`
+- [x] CSS-hidden admin features — security through `display:none`
+- [x] Hardcoded `localhost` in production bundles — "it works on my machine" made permanent
+- [x] Build path fingerprinting — `/Users/dev/work/...` tells a story
+- [x] Misconfigured CORS policies — `Access-Control-Allow-Origin: *` is not a policy, it's a prayer
+- [x] CVE correlation with hidden dependencies — knowing what they run before they do
+- [x] Leaked TODOs and FIXMEs — reading developers' inner monologue
 
 ---
 
