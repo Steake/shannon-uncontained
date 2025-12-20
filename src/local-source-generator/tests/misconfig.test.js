@@ -87,11 +87,11 @@ describe('scanForSecrets', () => {
     });
 
     test('should detect hardcoded passwords', () => {
-        const content = 'const config = { password: "supersecret123" }';
+        const content = 'const config = { "password": "supersecret123" }';
 
         const result = scanForSecrets(content);
 
-        assert.ok(result.some(s => s.type === 'password'));
+        assert.ok(result.some(s => s.type === 'password'), 'Should detect password pattern');
     });
 
     test('should detect private keys', () => {

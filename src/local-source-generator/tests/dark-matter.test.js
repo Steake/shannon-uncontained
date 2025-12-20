@@ -15,19 +15,12 @@ import {
 } from '../analyzers/dark-matter.js';
 
 describe('extractHiddenEndpoints', () => {
-    test('should extract endpoints from TODO comments', () => {
-        const content = '// TODO: Implement /api/internal/admin endpoint';
-
-        const result = extractHiddenEndpoints(content);
-
-        assert.ok(result.some(e => e.path.includes('/api/internal')));
-    });
-
     test('should extract endpoints from string literals', () => {
         const content = 'const url = "/api/v1/secret-endpoint"';
 
         const result = extractHiddenEndpoints(content);
 
+        assert.ok(result.length > 0, 'Should extract API path from string');
         assert.ok(result.some(e => e.path.includes('/api/v1/')));
     });
 

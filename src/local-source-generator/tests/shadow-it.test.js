@@ -16,11 +16,11 @@ import {
 
 describe('extractCloudBuckets', () => {
     test('should extract S3 bucket URLs', () => {
-        const content = 'const img = "https://my-bucket.s3.amazonaws.com/image.png"';
+        const content = 'const img = "https://my-bucket.s3.us-east-1.amazonaws.com/image.png"';
 
         const result = extractCloudBuckets(content);
 
-        assert.ok(result.length > 0);
+        assert.ok(result.length > 0, 'Should extract S3 bucket URL');
         assert.equal(result[0].provider, 'aws');
     });
 

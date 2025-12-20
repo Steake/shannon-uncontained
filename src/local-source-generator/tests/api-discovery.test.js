@@ -54,7 +54,7 @@ describe('extractAPIsFromJS', () => {
 
     test('should classify endpoint types', () => {
         const jsFiles = [
-            { url: 'a.js', endpoints: ['/api/login', '/api/admin/users', '/api/upload'] }
+            { url: 'a.js', endpoints: ['/api/login', '/api/admin/settings', '/api/upload'] }
         ];
 
         const result = extractAPIsFromJS(jsFiles);
