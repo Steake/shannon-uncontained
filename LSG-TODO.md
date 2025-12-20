@@ -45,26 +45,26 @@ This document charts our path from "barely functional prototype" to "instrument 
 
 *Because hope is not a strategy.*
 
-- [ ] Graceful degradation when tools are missing — fail like a gentleman
-- [ ] Retry logic for network failures — the internet is held together with duct tape and prayers
-- [ ] Timeout handling for external commands — some processes, like some meetings, must be forcibly terminated
-- [ ] URL validation before processing — garbage in, garbage out, but let's at least check at the door
+- [x] Graceful degradation when tools are missing — fail like a gentleman
+- [x] Retry logic for network failures — the internet is held together with duct tape and prayers
+- [x] Timeout handling for external commands — some processes, like some meetings, must be forcibly terminated
+- [x] URL validation before processing — garbage in, garbage out, but let's at least check at the door
 
 ### 1.3 Output Quality
 
 *Lies, damned lies, and synthetic source code.*
 
-- [ ] Improve pseudo-source fidelity — make our fabrications more convincing
-- [ ] Parameter type inference from URL patterns — `?id=1` is probably an integer, one hopes
-- [ ] Realistic model schemas from form analysis — if it asks for an email, it probably stores one
-- [ ] HTTP method inference — distinguishing GET from POST is left as an exercise to the reader
+- [x] Improve pseudo-source fidelity — make our fabrications more convincing
+- [x] Parameter type inference from URL patterns — `?id=1` is probably an integer, one hopes
+- [x] Realistic model schemas from form analysis — if it asks for an email, it probably stores one
+- [x] HTTP method inference — distinguishing GET from POST is left as an exercise to the reader
 
 ### 1.4 Testing
 
 *Trust, but verify. Then verify again. Then write a test.*
 
-- [ ] Unit tests for core functions — the bare minimum of professional integrity
-- [ ] Integration tests with mock targets — controlled environments for controlled chaos
+- [x] Unit tests for core functions — the bare minimum of professional integrity
+- [x] Integration tests with mock targets — controlled environments for controlled chaos
 - [ ] Benchmarks against known targets — how wrong are we, exactly?
 
 ---
