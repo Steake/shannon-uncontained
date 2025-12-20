@@ -5,7 +5,7 @@
  * and leaked credentials/configurations.
  */
 
-import { withTimeout, withFallback } from '../utils/resilience.js';
+import { withTimeout } from '../utils/resilience.js';
 
 /**
  * Cloud provider IP ranges and signatures
