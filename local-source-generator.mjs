@@ -17,13 +17,6 @@ import {
     isRetryableError
 } from './src/local-source-generator/utils/resilience.js';
 
-// Import inference utilities
-import {
-    inferParameterType,
-    inferHttpMethod,
-    generateSecurityAnnotations
-} from './src/local-source-generator/utils/inference.js';
-
 // Core reconnaissance tools
 const TOOLS = {
     // Shannon already uses these: 
@@ -54,9 +47,6 @@ const TOOL_TIMEOUTS = {
 // Main generator
 export async function generateLocalSource(webUrl, outputDir) {
     console.log(chalk.yellow.bold('\n🔍 LOCAL SOURCE GENERATOR'));
-
-    // Track failed operations for summary
-    const failures = [];
 
     // Validate URL
     let parsedUrl;
@@ -559,7 +549,7 @@ function identifyCommandInjectionCandidates(endpoints) {
     if (candidates.length === 0) return 'None identified from black-box analysis';
 
     return candidates.map(c =>
-        `- ${c.method} ${c.path} (parameter: ${c.params.find(p => dangerousParams.some(dp => p.name.includes(dp))).name})`
+        `- ${c.method} ${c.path} (parameter: ${c.params.find(p => dangerousParams.some(dp => p.name.includes(dp)))?.name})`
     ).join('\n');
 }
 
