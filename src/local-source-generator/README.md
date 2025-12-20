@@ -10,7 +10,7 @@ to perform penetration testing without access to actual application source code.
 ./local-source-generator.mjs https://example.com
 
 # Run Shannon with synthetic source
-./shannon.mjs https://example.com ./shannon-workspace/repos/example. com
+./shannon.mjs https://example.com ./shannon-workspace/repos/example.com
 ```
 ## Features
 - Network reconnaissance using nmap, subfinder, whatweb

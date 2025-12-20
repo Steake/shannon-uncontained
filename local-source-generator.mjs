@@ -455,7 +455,7 @@ ${routes.map(route => `
 // Parameters: ${JSON.stringify(route.params)}
 app.${route.method.toLowerCase()}('${route.path}', async (req, res) => {
   // Input vectors: 
-  ${route.params.map(p => `  // - req.${p.location}. ${p.name} (${p.type})`).join('\n')}
+  ${route.params.map(p => `  // - req.${p.location}.${p.name} (${p.type})`).join('\n')}
   
   // SHANNON NOTE: This is a synthetic route generated from black-box analysis. 
   // Actual implementation unknown.  Treat all parameters as untrusted.
