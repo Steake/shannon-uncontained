@@ -75,10 +75,10 @@ This document charts our path from "barely functional prototype" to "instrument 
 
 *Teaching an old dog new tricks, or at least a new flag.*
 
-- [ ] Auto-detect black-box mode when source directory is empty — absence of evidence as evidence of absence
-- [ ] Add `--blackbox` flag to `shannon.mjs` — explicit is better than implicit, they say
-- [ ] Invoke LSG automatically in pre-recon phase — seamless integration, or so we claim
-- [ ] Pass LSG output to downstream agents — the synthetic becomes the real
+- [x] Auto-detect black-box mode when source directory is empty — absence of evidence as evidence of absence
+- [x] Add `--blackbox` flag to `shannon.mjs` — explicit is better than implicit, they say
+- [x] Invoke LSG automatically in pre-recon phase — seamless integration, or so we claim
+- [x] Pass LSG output to downstream agents — the synthetic becomes the real
 
 ### 2.2 Configuration System
 
