@@ -105,37 +105,37 @@ This document charts our path from "barely functional prototype" to "instrument 
 
 *Using intelligence to compensate for our lack of information.*
 
-- [ ] Infer architecture from crawled data — reading tea leaves, but scientifically
-- [ ] Generate accurate data flow models — tracing the paths we cannot see
-- [ ] Identify API patterns (REST, GraphQL) — because everyone thinks they're special
-- [ ] Detect authentication flows from forms — reverse-engineering trust
+- [x] Infer architecture from crawled data — reading tea leaves, but scientifically
+- [x] Generate accurate data flow models — tracing the paths we cannot see
+- [x] Identify API patterns (REST, GraphQL) — because everyone thinks they're special
+- [x] Detect authentication flows from forms — reverse-engineering trust
 
 ### 3.2 Source-to-Sink Inference
 
 *Vulnerability cartography without a map.*
 
-- [ ] Map endpoints to vulnerability classes — educated paranoia
-- [ ] Identify input vectors — query params, forms, headers, hopes, dreams
-- [ ] Generate synthetic "sources" for data flow analysis — manufacturing context
-- [ ] Create hypothesis queue for exploitation — organized speculation
+- [x] Map endpoints to vulnerability classes — educated paranoia
+- [x] Identify input vectors — query params, forms, headers, hopes, dreams
+- [x] Generate synthetic "sources" for data flow analysis — manufacturing context
+- [x] Create hypothesis queue for exploitation — organized speculation
 
 ### 3.3 Technology Fingerprinting
 
 *Know thy enemy's stack.*
 
-- [ ] Enhanced `whatweb` integration — structured output for structured thinking
-- [ ] Framework detection — React, Angular, Vue, Rails, Django, and whatever fresh hell ships next week
-- [ ] CMS detection — WordPress: the gift that keeps on giving (vulnerabilities)
-- [ ] WAF/CDN detection — knowing where the walls are before running into them
+- [x] Enhanced `whatweb` integration — structured output for structured thinking
+- [x] Framework detection — React, Angular, Vue, Rails, Django, and whatever fresh hell ships next week
+- [x] CMS detection — WordPress: the gift that keeps on giving (vulnerabilities)
+- [x] WAF/CDN detection — knowing where the walls are before running into them
 
 ### 3.4 API Discovery
 
 *Finding doors that weren't meant to be found.*
 
-- [ ] OpenAPI/Swagger detection — developers documenting themselves into exposure
-- [ ] GraphQL introspection — "Here is everything we do, please don't abuse it"
-- [ ] API enumeration from JS bundles — JavaScript: the world's most verbose confession
-- [ ] Schema generation for `schemathesis` — automated API harassment
+- [x] OpenAPI/Swagger detection — developers documenting themselves into exposure
+- [x] GraphQL introspection — "Here is everything we do, please don't abuse it"
+- [x] API enumeration from JS bundles — JavaScript: the world's most verbose confession
+- [x] Schema generation for `schemathesis` — automated API harassment
 
 ### 3.5 "Ghost" Traffic Generation
 
