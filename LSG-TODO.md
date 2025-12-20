@@ -105,88 +105,88 @@ This document charts our path from "barely functional prototype" to "instrument 
 
 *Using intelligence to compensate for our lack of information.*
 
-- [ ] Infer architecture from crawled data — reading tea leaves, but scientifically
-- [ ] Generate accurate data flow models — tracing the paths we cannot see
-- [ ] Identify API patterns (REST, GraphQL) — because everyone thinks they're special
-- [ ] Detect authentication flows from forms — reverse-engineering trust
+- [x] Infer architecture from crawled data — reading tea leaves, but scientifically
+- [x] Generate accurate data flow models — tracing the paths we cannot see
+- [x] Identify API patterns (REST, GraphQL) — because everyone thinks they're special
+- [x] Detect authentication flows from forms — reverse-engineering trust
 
 ### 3.2 Source-to-Sink Inference
 
 *Vulnerability cartography without a map.*
 
-- [ ] Map endpoints to vulnerability classes — educated paranoia
-- [ ] Identify input vectors — query params, forms, headers, hopes, dreams
-- [ ] Generate synthetic "sources" for data flow analysis — manufacturing context
-- [ ] Create hypothesis queue for exploitation — organized speculation
+- [x] Map endpoints to vulnerability classes — educated paranoia
+- [x] Identify input vectors — query params, forms, headers, hopes, dreams
+- [x] Generate synthetic "sources" for data flow analysis — manufacturing context
+- [x] Create hypothesis queue for exploitation — organized speculation
 
 ### 3.3 Technology Fingerprinting
 
 *Know thy enemy's stack.*
 
-- [ ] Enhanced `whatweb` integration — structured output for structured thinking
-- [ ] Framework detection — React, Angular, Vue, Rails, Django, and whatever fresh hell ships next week
-- [ ] CMS detection — WordPress: the gift that keeps on giving (vulnerabilities)
-- [ ] WAF/CDN detection — knowing where the walls are before running into them
+- [x] Enhanced `whatweb` integration — structured output for structured thinking
+- [x] Framework detection — React, Angular, Vue, Rails, Django, and whatever fresh hell ships next week
+- [x] CMS detection — WordPress: the gift that keeps on giving (vulnerabilities)
+- [x] WAF/CDN detection — knowing where the walls are before running into them
 
 ### 3.4 API Discovery
 
 *Finding doors that weren't meant to be found.*
 
-- [ ] OpenAPI/Swagger detection — developers documenting themselves into exposure
-- [ ] GraphQL introspection — "Here is everything we do, please don't abuse it"
-- [ ] API enumeration from JS bundles — JavaScript: the world's most verbose confession
-- [ ] Schema generation for `schemathesis` — automated API harassment
+- [x] OpenAPI/Swagger detection — developers documenting themselves into exposure
+- [x] GraphQL introspection — "Here is everything we do, please don't abuse it"
+- [x] API enumeration from JS bundles — JavaScript: the world's most verbose confession
+- [x] Schema generation for `schemathesis` — automated API harassment
 
 ### 3.5 "Ghost" Traffic Generation
 
 *Haunting applications with synthetic requests.*
 
-- [ ] Replay sanitized traffic patterns — echoes of legitimate users
-- [ ] Adversarial fuzzing lite — chaos, but artisanal
-- [ ] Race condition simulation — because timing is everything
-- [ ] Behavioral mimicry — looking human to machines
+- [x] Replay sanitized traffic patterns — echoes of legitimate users
+- [x] Adversarial fuzzing lite — chaos, but artisanal
+- [x] Race condition simulation — because timing is everything
+- [x] Behavioral mimicry — looking human to machines
 
 ### 3.6 Shadow IT Hunter
 
 *Finding what they forgot they deployed.*
 
-- [ ] Correlate assets with cloud ranges — connecting dots across the digital sky
-- [ ] Detect forgotten dev/staging environments — the skeletons in every org's closet
-- [ ] Identify S3 buckets in client-side code — "oops" as a security posture
-- [ ] Git leakage detection — `.git` folder reconstruction attempts
+- [x] Correlate assets with cloud ranges — connecting dots across the digital sky
+- [x] Detect forgotten dev/staging environments — the skeletons in every org's closet
+- [x] Identify S3 buckets in client-side code — "oops" as a security posture
+- [x] Git leakage detection — `.git` folder reconstruction attempts
 
 ### 3.7 "Dark Matter" Analysis
 
 *Detecting the invisible through its gravitational effects.*
 
-- [ ] Hidden endpoints in comments — developers leaving breadcrumbs
-- [ ] Obfuscated code pattern detection — suspicion as a heuristic
-- [ ] WebSocket identification — the forgotten protocol
-- [ ] Hidden directory scanning — `/admin`, `/backup`, and other classics
+- [x] Hidden endpoints in comments — developers leaving breadcrumbs
+- [x] Obfuscated code pattern detection — suspicion as a heuristic
+- [x] WebSocket identification — the forgotten protocol
+- [x] Hidden directory scanning — `/admin`, `/backup`, and other classics
 
 ### 3.8 The IQ 9000 Hacker
 
 *Techniques that make you feel clever, possibly too clever.*
 
-- [ ] Response latency analysis — distinguishing serverless from persistent infra
-- [ ] "Dark" endpoint prediction via naming conventions — reverse-engineering developer psychology
-- [ ] Side-channel dependency fingerprinting — inferring `package.json` without seeing it
-- [ ] Differential timing for database relationships — foreign keys through the looking glass
-- [ ] Legacy debt identification via JS archaeology — old code never dies, it just becomes vulnerable
-- [ ] Multi-egress CDN/WAF bypass mapping — regional variations in security theater
-- [ ] LLM-driven state machine analysis — hypothesizing business logic the hard way
+- [x] Response latency analysis — distinguishing serverless from persistent infra
+- [x] "Dark" endpoint prediction via naming conventions — reverse-engineering developer psychology
+- [x] Side-channel dependency fingerprinting — inferring `package.json` without seeing it
+- [x] Differential timing for database relationships — foreign keys through the looking glass
+- [x] Legacy debt identification via JS archaeology — old code never dies, it just becomes vulnerable
+- [x] Multi-egress CDN/WAF bypass mapping — regional variations in security theater
+- [x] LLM-driven state machine analysis — hypothesizing business logic the hard way
 
 ### 3.9 They Did It Wrong (And We Found It)
 
 *A celebration of developer optimism meeting production reality.*
 
-- [ ] "God Mode" flag detection — `?debug=true`, `?admin=1`, `?bypass=all`
-- [ ] CSS-hidden admin features — security through `display:none`
-- [ ] Hardcoded `localhost` in production bundles — "it works on my machine" made permanent
-- [ ] Build path fingerprinting — `/Users/dev/work/...` tells a story
-- [ ] Misconfigured CORS policies — `Access-Control-Allow-Origin: *` is not a policy, it's a prayer
-- [ ] CVE correlation with hidden dependencies — knowing what they run before they do
-- [ ] Leaked TODOs and FIXMEs — reading developers' inner monologue
+- [x] "God Mode" flag detection — `?debug=true`, `?admin=1`, `?bypass=all`
+- [x] CSS-hidden admin features — security through `display:none`
+- [x] Hardcoded `localhost` in production bundles — "it works on my machine" made permanent
+- [x] Build path fingerprinting — `/Users/dev/work/...` tells a story
+- [x] Misconfigured CORS policies — `Access-Control-Allow-Origin: *` is not a policy, it's a prayer
+- [x] CVE correlation with hidden dependencies — knowing what they run before they do
+- [x] Leaked TODOs and FIXMEs — reading developers' inner monologue
 
 ---
 
@@ -196,23 +196,23 @@ This document charts our path from "barely functional prototype" to "instrument 
 
 ### 4.1 CI/CD Integration
 
-- [ ] GitHub Actions workflow template — DevSecOps buzzword compliance
+- [x] GitHub Actions workflow template — DevSecOps buzzword compliance
 - [ ] GitLab CI template — for the self-hosted crowd
 - [ ] Jenkins pipeline — because some organizations never left 2015
-- [ ] Artifact upload — proof that something happened
+- [x] Artifact upload — proof that something happened
 
 ### 4.2 Reporting
 
-- [ ] Structured JSON output — for robots
-- [ ] HTML reports — for humans who pretend to read them
-- [ ] SARIF format — GitHub Security tab population
+- [x] Structured JSON output — for robots
+- [x] HTML reports — for humans who pretend to read them
+- [x] SARIF format — GitHub Security tab population
 - [ ] Jira/Linear integration — automated ticket creation (automated developer sadness)
 
 ### 4.3 Compliance Theater
 
-- [ ] OWASP Top 10 mapping — the canonical list of ways to fail
+- [x] OWASP Top 10 mapping — the canonical list of ways to fail
 - [ ] PCI-DSS tagging — for those handling other people's money
-- [ ] Audit trail evidence — CYA documentation
+- [x] Audit trail evidence — CYA documentation
 
 ---
 
