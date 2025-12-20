@@ -93,9 +93,9 @@ This document charts our path from "barely functional prototype" to "instrument 
 
 *Herding cats, but the cats are LLMs.*
 
-- [ ] Update prompts for synthetic sources — teaching AI to work with our fabrications
-- [ ] Add metadata markers — "WARNING: This code is a beautiful lie"
-- [ ] Ensure agents understand limitations — managing expectations, always managing expectations
+- [x] Update prompts for synthetic sources — teaching AI to work with our fabrications
+- [x] Add metadata markers — "WARNING: This code is a beautiful lie"
+- [x] Ensure agents understand limitations — managing expectations, always managing expectations
 
 ---
 
