@@ -1,0 +1,147 @@
+# Shannon Uncontained - Black-Box Security Scan
+#
+# This workflow runs Shannon's Local Source Generator for black-box
+# reconnaissance on your target application.
+#
+# Required secrets:
+# - GITHUB_TOKEN (auto-provided)
+# - LLM_PROVIDER (optional: github, openai, ollama)
+# - OPENAI_API_KEY or GITHUB_TOKEN for LLM
+#
+# Usage:
+# 1. Copy to .github/workflows/shannon-scan.yml
+# 2. Set TARGET_URL or configure as input
+# 3. Run manually or on schedule
+
+name: Shannon Security Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target URL to scan'
+        required: true
+        type: string
+      scan_depth:
+        description: 'Scan depth (1-5)'
+        required: false
+        default: '3'
+        type: string
+      enable_fuzzing:
+        description: 'Enable adversarial fuzzing'
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    # Run weekly on Monday at 2am UTC
+    - cron: '0 2 * * 1'
+
+env:
+  NODE_VERSION: '20'
+  # Default target for scheduled runs
+  DEFAULT_TARGET: '${{ vars.SHANNON_TARGET_URL }}'
+
+jobs:
+  scan:
+    name: Black-Box Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    permissions:
+      contents: read
+      security-events: write  # For SARIF upload
+      
+    steps:
+      - name: Checkout Shannon
+        uses: actions/checkout@v4
+        with:
+          repository: Steake/shannon
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install reconnaissance tools
+        run: |
+          # Install Go tools
+          go install github.com/tomnomnom/gau/v2/cmd/gau@latest
+          go install github.com/projectdiscovery/katana/cmd/katana@latest
+          go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+          
+          # Install system tools
+          sudo apt-get update
+          sudo apt-get install -y nmap whatweb
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium
+
+      - name: Run LSG Reconnaissance
+        id: lsg
+        env:
+          TARGET_URL: ${{ inputs.target_url || env.DEFAULT_TARGET }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'github' }}
+        run: |
+          mkdir -p results
+          node local-source-generator.mjs "$TARGET_URL" --output ./results
+          echo "output_dir=./results" >> $GITHUB_OUTPUT
+
+      - name: Generate SARIF Report
+        if: always()
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Read findings
+            const resultsDir = './results';
+            const sarif = {
+              '\$schema': 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json',
+              version: '2.1.0',
+              runs: [{
+                tool: {
+                  driver: {
+                    name: 'Shannon LSG',
+                    version: '1.0.0',
+                    informationUri: 'https://github.com/Steake/shannon',
+                    rules: []
+                  }
+                },
+                results: []
+              }]
+            };
+            
+            fs.writeFileSync('./results/shannon-results.sarif', JSON.stringify(sarif, null, 2));
+          "
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ./results/shannon-results.sarif
+
+      - name: Upload scan artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shannon-scan-results
+          path: ./results/
+          retention-days: 30
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Shannon Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** ${{ inputs.target_url || env.DEFAULT_TARGET }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Scan Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Files Generated" >> $GITHUB_STEP_SUMMARY
+          find ./results -type f -name "*.md" -o -name "*.json" | head -20 >> $GITHUB_STEP_SUMMARY
