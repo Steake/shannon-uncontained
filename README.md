@@ -44,9 +44,14 @@ This fork addresses these assumptions. We call it "Uncontained" because:
 |:-----------|:---------------:|:-------------------:|
 | Native execution | Via Docker | **Direct** |
 | Black-box reconnaissance | ❌ | **✅** |
-| Multi-provider LLM | Claude only | **Claude, OpenAI, GitHub Models** |
+| Multi-provider LLM | Claude only | **Claude, OpenAI, GitHub Models, Ollama, llama.cpp, LM Studio** |
 | Local source generation | ❌ | **✅** |
 | Synthetic pseudo-source | ❌ | **✅** |
+| Advanced analyzers | ❌ | **✅ (9 specialized modules)** |
+| LLM-powered inference | ❌ | **✅** |
+| CI/CD integration | ❌ | **✅ (GitHub Actions)** |
+| SARIF reporting | ❌ | **✅** |
+| OWASP Top 10 mapping | ❌ | **✅** |
 
 ### What This Fork Does *Not* Change
 
@@ -75,7 +80,7 @@ Shannon closes this gap by acting as your on-demand pentester. It doesn't merely
 ### Prerequisites
 
 - **Node.js 18+** — the runtime, not a container pretending to contain a runtime
-- **API credentials** — Claude, OpenAI, or GitHub Models (see `.env.example`)
+- **API credentials** — Claude, OpenAI, GitHub Models, or run locally with Ollama/llama.cpp/LM Studio (see `.env.example`)
 - **Optional reconnaissance tools** — `nmap`, `subfinder`, `whatweb`, `gau`, `katana`
 
 ### Installation
@@ -137,19 +142,107 @@ authentication:
     value: "/dashboard"
 ```
 
+### CI/CD Integration
+
+Shannon includes a GitHub Actions workflow for automated security scanning:
+
+**Manual Trigger:**
+
+1. Copy `.github/workflows/shannon-scan.yml` to your repository
+2. Go to Actions → Shannon Security Scan → Run workflow
+3. Enter your target URL and configuration
+4. Review results in the Security tab and workflow artifacts
+
+**Scheduled Scanning:**
+
+The workflow runs automatically weekly on Monday at 2am UTC (configurable in the workflow file).
+
+**Integration Example:**
+
+You can also trigger the scan from your own workflows:
+
+```yaml
+name: Deploy with Security Check
+on: [push]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger Shannon scan
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'shannon-scan.yml',
+              ref: 'main',
+              inputs: {
+                target_url: 'https://staging.your-app.com'
+              }
+            })
+```
+
+The workflow automatically:
+- Installs Shannon and required tools
+- Runs reconnaissance and exploitation
+- Generates SARIF reports for GitHub Security tab
+- Uploads findings as workflow artifacts
+- Creates markdown summaries in PR comments
+
+See `.github/workflows/shannon-scan.yml` for the full reusable workflow.
+
 ---
 
 ## ✨ Features
+
+### Core Capabilities
 
 - **Fully Autonomous Operation** — Launch with a single command. The AI handles reconnaissance, exploitation, and reporting without intervention.
 
 - **Proof-of-Concept or It Didn't Happen** — Every reported vulnerability comes with a reproducible exploit. No theoretical hand-wraving.
 
-- **Multi-Provider LLM Support** — Claude, OpenAI, GitHub Models. Vendor lock-in is for those who've stopped thinking.
+- **Multi-Provider LLM Support** — Claude, OpenAI, GitHub Models, Ollama, llama.cpp, LM Studio. Vendor lock-in is for those who've stopped thinking.
 
 - **Black-Box Reconnaissance** — The Local Source Generator creates synthetic source from crawled endpoints when real source isn't available.
 
 - **Parallel Processing** — Analysis and exploitation run concurrently across vulnerability categories.
+
+### Advanced Reconnaissance *(Phase 3: The Interesting Bits)*
+
+Shannon Uncontained includes specialized analyzers that find what conventional scanners miss:
+
+- **API Discovery** — Harvests OpenAPI/Swagger specs, GraphQL introspection, and API endpoints buried in JavaScript bundles. Generates `schemathesis` configs for automated API fuzzing.
+
+- **Technology Fingerprinting** — Identifies frameworks, CMSs, WAFs, and CDNs through enhanced `whatweb` integration and behavioral analysis. Knows what you're running before you remember deploying it.
+
+- **Shadow IT Hunter** — Discovers forgotten infrastructure, dev/staging environments, misconfigured S3 buckets in client-side code, and Git leakage (`.git` folder reconstruction). Finds what your org forgot they deployed.
+
+- **Dark Matter Analysis** — Detects hidden endpoints in comments, obfuscated code patterns, WebSocket connections, and classic forgotten directories (`/admin`, `/backup`, `/staging`). The invisible made visible.
+
+- **Ghost Traffic Generation** — Replays sanitized traffic patterns, performs adversarial fuzzing, simulates race conditions, and mimics legitimate user behavior to uncover timing-based vulnerabilities.
+
+- **Misconfig Detector ("They Did It Wrong")** — Finds developer mistakes across multiple categories:
+  - **Debug features**: Debug flags (`?debug=true`, `?admin=1`), CSS-hidden admin panels (`display:none` as security)
+  - **Hardcoded secrets**: AWS keys, GitHub tokens, JWT secrets, API keys, passwords, connection strings
+  - **Development artifacts**: Hardcoded `localhost` in production bundles, build path leaks (`/Users/dev/...`)
+  - **Security misconfigs**: CORS set to `*`, leaked TODOs/FIXMEs with security implications
+
+- **Vulnerability Mapper** — Maps discovered endpoints to OWASP vulnerability classes, identifies input vectors (query params, forms, headers), generates synthetic sources for data flow analysis, and creates hypothesis queues for exploitation.
+
+- **LLM-Powered Analysis** — Uses AI to infer architecture from crawled data, generate data flow models, identify API patterns (REST/GraphQL), and detect authentication flows. Intelligence compensating for lack of information.
+
+### Enterprise Features *(Phase 4: The Boring But Necessary Bits)*
+
+- **CI/CD Integration** — GitHub Actions workflow template for automated security scanning in your pipeline. Includes artifact upload and SARIF report generation for GitHub Security tab integration.
+
+- **Multi-Format Reporting** — JSON for robots, HTML for humans who pretend to read them, SARIF for compliance automation. Choose your format based on who's asking.
+
+- **OWASP Top 10 Mapping** — All findings mapped to OWASP Top 10 2021 categories for audit and compliance requirements.
+
+- **Audit Trail** — Comprehensive evidence logging with timestamps and metadata. CYA documentation that actually documents something.
 
 ---
 
@@ -252,8 +345,11 @@ All agents are powered by your choice of LLM provider:
 - **Claude** (Anthropic) — Original provider, excellent for code analysis
 - **OpenAI** (GPT-4) — Alternative with different strengths
 - **GitHub Models** — Free tier access to various models
+- **Ollama** — Local models without API costs
+- **llama.cpp** — Native local inference
+- **LM Studio** — GUI-based local model hosting
 
-Configure via `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` in your `.env` file.
+Configure via `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `LLM_PROVIDER` environment variables. See `.env.example` for all options.
 
 #### 🔵 Phase 1: Pre-Reconnaissance
 
@@ -288,6 +384,31 @@ Validated findings compiled into actionable reports with:
 - Reproducible proof-of-concept code
 - Step-by-step exploitation instructions
 - Severity assessment and remediation guidance
+- Multiple output formats: JSON (machine-readable), HTML (human-readable with dark theme), SARIF (GitHub Security integration)
+- OWASP Top 10 2021 mapping for compliance
+- Comprehensive audit trail with timestamps
+
+### Analyzer Modules *(Fork Addition)*
+
+The Local Source Generator includes nine specialized analyzers for comprehensive black-box reconnaissance:
+
+| Analyzer | Purpose | Key Capabilities |
+|:---------|:--------|:-----------------|
+| **API Discovery** | Find and document APIs | OpenAPI/Swagger detection, GraphQL introspection, endpoint extraction from JS bundles, `schemathesis` config generation |
+| **Fingerprinter** | Identify technology stack | Framework detection (React, Angular, Vue, Rails, Django), CMS identification (WordPress, Drupal), WAF/CDN detection (Cloudflare, Akamai), version enumeration |
+| **Shadow IT** | Discover forgotten infrastructure | Cloud asset correlation (AWS, Azure, GCP), dev/staging environment detection, S3 bucket identification, Git leakage scanning |
+| **Dark Matter** | Find hidden endpoints | Comment-based discovery, obfuscated code patterns, WebSocket identification, hidden directory scanning (`/admin`, `/backup`, etc.) |
+| **Ghost Traffic** | Generate synthetic requests | Traffic pattern replay, adversarial fuzzing, race condition simulation, behavioral user mimicry |
+| **Misconfig Detector** | Find developer mistakes | Debug flag detection (`?debug=true`), CSS-hidden features (`display:none`), hardcoded secrets (AWS keys, GitHub tokens, passwords), CORS misconfigurations, leaked TODOs/FIXMEs |
+| **Vuln Mapper** | Map vulnerabilities | OWASP class mapping, input vector identification, source-to-sink inference, exploit hypothesis generation |
+| **LLM Analyzer** | AI-powered inference | Architecture inference from behavior, data flow modeling, API pattern recognition, authentication flow detection |
+| **Network Recon** | Infrastructure discovery | Port scanning (`nmap`), subdomain enumeration (`subfinder`), service fingerprinting (`whatweb`) |
+
+All analyzers include:
+- Graceful degradation when tools are unavailable
+- Timeout handling for network operations
+- Structured JSON output for downstream processing
+- Comprehensive test coverage
 
 ---
 
