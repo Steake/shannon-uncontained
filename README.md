@@ -152,6 +152,7 @@ on: [push, pull_request]
 
 jobs:
   shannon-scan:
+    # Replace 'Steake' with your GitHub username if using a fork
     uses: Steake/shannon-uncontained/.github/workflows/shannon-scan.yml@main
     with:
       target: "https://staging.your-app.com"
@@ -199,7 +200,7 @@ Shannon Uncontained includes specialized analyzers that find what conventional s
 
 - **Ghost Traffic Generation** — Replays sanitized traffic patterns, performs adversarial fuzzing, simulates race conditions, and mimics legitimate user behavior to uncover timing-based vulnerabilities.
 
-- **Misconfig Detector ("They Did It Wrong")** — Finds debug flags (`?debug=true`), CSS-hidden admin features (`display:none` as security), hardcoded `localhost` in production bundles, build path leaks (`/Users/dev/...`), CORS misconfigurations (`*` is not a policy), and leaked TODOs/FIXMEs with security implications.
+- **Misconfig Detector ("They Did It Wrong")** — Finds debug flags (`?debug=true`), CSS-hidden admin features (`display:none` as security), hardcoded secrets (AWS keys, GitHub tokens, JWT secrets, API keys, passwords), hardcoded `localhost` in production bundles, build path leaks (`/Users/dev/...`), CORS misconfigurations (`*` is not a policy), and leaked TODOs/FIXMEs with security implications.
 
 - **Vulnerability Mapper** — Maps discovered endpoints to OWASP vulnerability classes, identifies input vectors (query params, forms, headers), generates synthetic sources for data flow analysis, and creates hypothesis queues for exploitation.
 
@@ -370,7 +371,7 @@ The Local Source Generator includes nine specialized analyzers for comprehensive
 | **Shadow IT** | Discover forgotten infrastructure | Cloud asset correlation (AWS, Azure, GCP), dev/staging environment detection, S3 bucket identification, Git leakage scanning |
 | **Dark Matter** | Find hidden endpoints | Comment-based discovery, obfuscated code patterns, WebSocket identification, hidden directory scanning (`/admin`, `/backup`, etc.) |
 | **Ghost Traffic** | Generate synthetic requests | Traffic pattern replay, adversarial fuzzing, race condition simulation, behavioral user mimicry |
-| **Misconfig Detector** | Find developer mistakes | Debug flag detection (`?debug=true`), CSS-hidden features (`display:none`), hardcoded credentials, CORS misconfigurations, leaked TODOs/FIXMEs |
+| **Misconfig Detector** | Find developer mistakes | Debug flag detection (`?debug=true`), CSS-hidden features (`display:none`), hardcoded secrets (AWS keys, GitHub tokens, passwords), CORS misconfigurations, leaked TODOs/FIXMEs |
 | **Vuln Mapper** | Map vulnerabilities | OWASP class mapping, input vector identification, source-to-sink inference, exploit hypothesis generation |
 | **LLM Analyzer** | AI-powered inference | Architecture inference from behavior, data flow modeling, API pattern recognition, authentication flow detection |
 | **Network Recon** | Infrastructure discovery | Port scanning (`nmap`), subdomain enumeration (`subfinder`), service fingerprinting (`whatweb`) |
