@@ -261,7 +261,7 @@ async function runClaudePrompt(prompt, sourceDir, allowedTools = 'Read', context
                 console.log(colorFn(`${prefix} ${cleanedContent}`));
               } else {
                 // Full turn output for single agents
-                console.log(colorFn(`\n    🤖 Turn ${turnCount} (${description}):`))
+                console.log(colorFn(`\n    🤖 Turn ${turnCount} (${description}):`));
                 console.log(colorFn(`    ${cleanedContent}`));
               }
 
@@ -272,7 +272,7 @@ async function runClaudePrompt(prompt, sourceDir, allowedTools = 'Read', context
             }
           } else {
             // Full streaming output - show complete messages with specialist color
-            console.log(colorFn(`\n    🤖 Turn ${turnCount} (${description}):`))
+            console.log(colorFn(`\n    🤖 Turn ${turnCount} (${description}):`));
             console.log(colorFn(`    ${content}`));
           }
 

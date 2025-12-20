@@ -2,7 +2,7 @@ import { fs, path } from 'zx';
 import chalk from 'chalk';
 
 export async function buildPseudoSource(data) {
-  const { sourceDir, webUrl, networkData, crawlData, jsData } = data;
+  const { sourceDir, webUrl, crawlData } = data;
   
   // Generate routes
   await generateRoutes(crawlData.endpoints, path.join(sourceDir, 'routes'));
@@ -10,7 +10,7 @@ export async function buildPseudoSource(data) {
   // Generate config
   await generateConfig(webUrl, path.join(sourceDir, 'config'));
   
-  // Generate pre_recon_deliverable. md
+  // Generate pre_recon_deliverable.md
   await generatePreReconDeliverable(data, sourceDir);
   
   console.log(chalk.green('  ✅ Pseudo source files created'));
@@ -23,14 +23,14 @@ async function generateRoutes(endpoints, routesDir) {
 
 ${endpoints.map(ep => `
 // ${ep.method} ${ep.path}
-app.${ep.method. toLowerCase()}('${ep.path}', async (req, res) => {
+app.${ep.method.toLowerCase()}('${ep.path}', async (req, res) => {
   // SHANNON NOTE:  Synthetic route - actual implementation unknown
   // Treat all parameters as untrusted
 });
 `).join('\n')}
 `;
   
-  await fs.writeFile(path.join(routesDir, 'discovered. pseudo. js'), content);
+  await fs.writeFile(path.join(routesDir, 'discovered.pseudo.js'), content);
 }
 
 async function generateConfig(webUrl, configDir) {
@@ -70,7 +70,7 @@ ${networkData.whatweb || 'Not available'}
 
 **Total Discovered:** ${crawlData.endpoints.length} endpoints
 
-${crawlData.endpoints.map(ep => `- ${ep.method} ${ep. path}`).join('\n')}
+${crawlData.endpoints.map(ep => `- ${ep.method} ${ep.path}`).join('\n')}
 
 ### JavaScript Files Analyzed
 
