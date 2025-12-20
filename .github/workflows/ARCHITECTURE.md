@@ -10,12 +10,12 @@ graph LR
     subgraph "Core Orchestration"
         SessionManager["Session Manager<br/>session-manager.js"]
         CheckpointManager["Checkpoint Manager<br/>checkpoint-manager.js"]
-        ConfigParser["Config Parser<br/>config-parser. js"]
+        ConfigParser["Config Parser<br/>config-parser.js"]
         ErrorHandling["Error Handling<br/>error-handling.js"]
     end
 
     subgraph "AI Layer"
-        ClaudeExecutor["Claude Executor<br/>ai/claude-executor. js"]
+        ClaudeExecutor["Claude Executor<br/>ai/claude-executor.js"]
         LLMClient["LLM Client<br/>ai/llm-client.js"]
         LLMAnalyzer["LLM Analyzer<br/>analyzers/llm-analyzer.js"]
         PromptManager["Prompt Manager<br/>prompts/prompt-manager.js"]
@@ -40,9 +40,9 @@ graph LR
     end
 
     subgraph "Analyzers"
-        APIDiscovery["API Discovery<br/>analyzers/api-discovery. js"]
+        APIDiscovery["API Discovery<br/>analyzers/api-discovery.js"]
         DarkMatter["Dark Matter<br/>analyzers/dark-matter.js"]
-        Fingerprinter["Fingerprinter<br/>analyzers/fingerprinter. js"]
+        Fingerprinter["Fingerprinter<br/>analyzers/fingerprinter.js"]
         MisconfigDetector["Misconfig Detector<br/>analyzers/misconfig-detector.js"]
         ShadowIT["Shadow IT<br/>analyzers/shadow-it.js"]
         GhostTraffic["Ghost Traffic<br/>analyzers/ghost-traffic.js"]
@@ -59,8 +59,8 @@ graph LR
     subgraph "MCP Server"
         MCPIndex["MCP Server<br/>mcp-server/src/index.js"]
         GenerateTOTP["Generate TOTP<br/>tools/generate-totp.js"]
-        SaveDeliverable["Save Deliverable<br/>tools/save-deliverable. js"]
-        QueueValidator["Queue Validator<br/>validation/queue-validator. js"]
+        SaveDeliverable["Save Deliverable<br/>tools/save-deliverable.js"]
+        QueueValidator["Queue Validator<br/>validation/queue-validator.js"]
         TOTPValidator["TOTP Validator<br/>validation/totp-validator.js"]
     end
 
@@ -76,7 +76,7 @@ graph LR
     subgraph "Audit & Logging"
         AuditSession["Audit Session<br/>audit/audit-session.js"]
         Logger["Logger<br/>audit/logger.js"]
-        MetricsTracker["Metrics Tracker<br/>audit/metrics-tracker. js"]
+        MetricsTracker["Metrics Tracker<br/>audit/metrics-tracker.js"]
     end
 
     subgraph "Configuration"

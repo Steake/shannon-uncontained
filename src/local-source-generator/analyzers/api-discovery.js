@@ -4,7 +4,7 @@
  * Discovers API schemas, GraphQL introspection, and API endpoints from JS bundles.
  */
 
-import { withTimeout, withFallback } from '../utils/resilience.js';
+import { withTimeout } from '../utils/resilience.js';
 
 /**
  * Common API schema paths to probe
