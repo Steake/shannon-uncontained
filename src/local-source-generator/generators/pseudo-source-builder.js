@@ -10,7 +10,7 @@ export async function buildPseudoSource(data) {
   // Generate config
   await generateConfig(webUrl, path.join(sourceDir, 'config'));
   
-  // Generate pre_recon_deliverable. md
+  // Generate pre_recon_deliverable.md
   await generatePreReconDeliverable(data, sourceDir);
   
   console.log(chalk.green('  ✅ Pseudo source files created'));
