@@ -441,14 +441,30 @@ if (nonFlagArgs.length === 0) {
 }
 
 // Handle insufficient arguments
-if (nonFlagArgs.length < 2) {
+// In blackbox mode, only WEB_URL is required
+if (blackboxMode) {
+  if (nonFlagArgs.length < 1) {
+    console.log(chalk.red('❌ WEB_URL is required for black-box mode'));
+    console.log(chalk.gray('Usage: ./shannon.mjs --blackbox <WEB_URL> [--config config.yaml]'));
+    console.log(chalk.gray('Help:  ./shannon.mjs --help'));
+    process.exit(1);
+  }
+} else if (nonFlagArgs.length < 2) {
   console.log(chalk.red('❌ Both WEB_URL and REPO_PATH are required'));
   console.log(chalk.gray('Usage: ./shannon.mjs <WEB_URL> <REPO_PATH> [--config config.yaml]'));
+  console.log(chalk.gray('       ./shannon.mjs --blackbox <WEB_URL>  (for black-box mode)'));
   console.log(chalk.gray('Help:  ./shannon.mjs --help'));
   process.exit(1);
 }
 
-const [webUrl, repoPath] = nonFlagArgs;
+const webUrl = nonFlagArgs[0];
+// In blackbox mode, create output directory based on target domain
+let repoPath = nonFlagArgs[1];
+if (blackboxMode && !repoPath) {
+  const targetDomain = new URL(webUrl).hostname.replace(/[^a-zA-Z0-9.-]/g, '_');
+  repoPath = path.join(process.cwd(), 'repos', targetDomain);
+  console.log(chalk.cyan(`📂 Output directory: ${repoPath}`));
+}
 
 // Validate web URL
 const webUrlValidation = validateWebUrl(webUrl);
@@ -458,12 +474,24 @@ if (!webUrlValidation.valid) {
   process.exit(1);
 }
 
-// Validate repository path
-const repoPathValidation = await validateRepoPath(repoPath);
-if (!repoPathValidation.valid) {
-  console.log(chalk.red(`❌ Invalid repository path: ${repoPathValidation.error}`));
-  console.log(chalk.gray(`Expected: Accessible local directory path`));
-  process.exit(1);
+// Validate repository path (create if blackbox mode)
+let repoPathValidation;
+if (blackboxMode) {
+  // In blackbox mode, create the directory if it doesn't exist
+  try {
+    await fs.mkdir(repoPath, { recursive: true });
+    repoPathValidation = { valid: true, path: repoPath };
+  } catch (error) {
+    console.log(chalk.red(`❌ Cannot create output directory: ${error.message}`));
+    process.exit(1);
+  }
+} else {
+  repoPathValidation = await validateRepoPath(repoPath);
+  if (!repoPathValidation.valid) {
+    console.log(chalk.red(`❌ Invalid repository path: ${repoPathValidation.error}`));
+    console.log(chalk.gray(`Expected: Accessible local directory path`));
+    process.exit(1);
+  }
 }
 
 // Success - show validated inputs
