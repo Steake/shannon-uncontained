@@ -84,10 +84,10 @@ This document charts our path from "barely functional prototype" to "instrument 
 
 *For those who prefer their chaos organized.*
 
-- [ ] YAML config file support — see `configs/blackbox-templates/` for examples of our hubris
-- [ ] Authenticated scanning — because sometimes you need to log in before you break in
-- [ ] Scope limiting — include/exclude patterns for the discerning attacker
-- [ ] Rate limiting — politeness as a service
+- [x] YAML config file support — see `configs/blackbox-templates/` for examples of our hubris
+- [x] Authenticated scanning — because sometimes you need to log in before you break in
+- [x] Scope limiting — include/exclude patterns for the discerning attacker
+- [x] Rate limiting — politeness as a service
 
 ### 2.3 Agent Coordination
 
