@@ -55,19 +55,6 @@ const BUILD_PATH_PATTERNS = [
 ];
 
 /**
- * CSS-hidden element patterns
- */
-const CSS_HIDDEN_PATTERNS = [
-    { selector: '[style*="display:none"]', risk: 'Admin features hidden via inline' },
-    { selector: '[style*="visibility:hidden"]', risk: 'Hidden UI elements' },
-    { selector: '.hidden-admin', risk: 'CSS class suggests hidden admin' },
-    { selector: '.debug-only', risk: 'Debug-only features' },
-    { selector: '.internal-only', risk: 'Internal features exposed' },
-    { selector: '[data-admin]', risk: 'Admin data attributes' },
-    { selector: '[data-debug]', risk: 'Debug data attributes' }
-];
-
-/**
  * TODO/FIXME patterns with security implications
  */
 const TODO_PATTERNS = [

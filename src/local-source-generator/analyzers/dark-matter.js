@@ -5,7 +5,7 @@
  * and performs intelligent directory scanning.
  */
 
-import { withTimeout, withFallback } from '../utils/resilience.js';
+import { withTimeout } from '../utils/resilience.js';
 
 /**
  * Common hidden/admin directories to scan
@@ -180,8 +180,7 @@ export function identifyWebSockets(content) {
 export async function scanHiddenDirectories(baseUrl, options = {}) {
     const {
         timeout = 3000,
-        directories = HIDDEN_DIRECTORIES,
-        checkMethods = ['GET', 'HEAD']
+        directories = HIDDEN_DIRECTORIES
     } = options;
 
     const discovered = [];
