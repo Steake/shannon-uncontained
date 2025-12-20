@@ -6,7 +6,7 @@
  */
 
 import { strict as assert } from 'node:assert';
-import { test, describe, it, beforeEach } from 'node:test';
+import { test } from 'node:test';
 import { getProviderConfig } from './llm-client.js';
 
 // Helper to reset env between tests
