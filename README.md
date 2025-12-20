@@ -152,7 +152,7 @@ on: [push, pull_request]
 
 jobs:
   shannon-scan:
-    # Replace 'Steake' with your GitHub username if using a fork
+    # If you've forked and modified the workflow, update the repository path
     uses: Steake/shannon-uncontained/.github/workflows/shannon-scan.yml@main
     with:
       target: "https://staging.your-app.com"
@@ -200,7 +200,11 @@ Shannon Uncontained includes specialized analyzers that find what conventional s
 
 - **Ghost Traffic Generation** — Replays sanitized traffic patterns, performs adversarial fuzzing, simulates race conditions, and mimics legitimate user behavior to uncover timing-based vulnerabilities.
 
-- **Misconfig Detector ("They Did It Wrong")** — Finds debug flags (`?debug=true`), CSS-hidden admin features (`display:none` as security), hardcoded secrets (AWS keys, GitHub tokens, JWT secrets, API keys, passwords), hardcoded `localhost` in production bundles, build path leaks (`/Users/dev/...`), CORS misconfigurations (`*` is not a policy), and leaked TODOs/FIXMEs with security implications.
+- **Misconfig Detector ("They Did It Wrong")** — Finds developer mistakes across multiple categories:
+  - **Debug features**: Debug flags (`?debug=true`, `?admin=1`), CSS-hidden admin panels (`display:none` as security)
+  - **Hardcoded secrets**: AWS keys, GitHub tokens, JWT secrets, API keys, passwords, connection strings
+  - **Development artifacts**: Hardcoded `localhost` in production bundles, build path leaks (`/Users/dev/...`)
+  - **Security misconfigs**: CORS set to `*`, leaked TODOs/FIXMEs with security implications
 
 - **Vulnerability Mapper** — Maps discovered endpoints to OWASP vulnerability classes, identifies input vectors (query params, forms, headers), generates synthetic sources for data flow analysis, and creates hypothesis queues for exploitation.
 
