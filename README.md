@@ -144,21 +144,45 @@ authentication:
 
 ### CI/CD Integration
 
-Shannon can be integrated into your automated pipeline using GitHub Actions:
+Shannon includes a GitHub Actions workflow for automated security scanning:
+
+**Manual Trigger:**
+
+1. Copy `.github/workflows/shannon-scan.yml` to your repository
+2. Go to Actions → Shannon Security Scan → Run workflow
+3. Enter your target URL and configuration
+4. Review results in the Security tab and workflow artifacts
+
+**Scheduled Scanning:**
+
+The workflow runs automatically every Monday at 2am UTC (configurable in the workflow file).
+
+**Integration Example:**
+
+You can also trigger the scan from your own workflows:
 
 ```yaml
-name: Security Scan
-on: [push, pull_request]
+name: Deploy with Security Check
+on: [push]
 
 jobs:
-  shannon-scan:
-    # If you've forked and modified the workflow, update the repository path
-    uses: Steake/shannon-uncontained/.github/workflows/shannon-scan.yml@main
-    with:
-      target: "https://staging.your-app.com"
-      black-box: true
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger Shannon scan
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'shannon-scan.yml',
+              ref: 'main',
+              inputs: {
+                target_url: 'https://staging.your-app.com'
+              }
+            })
 ```
 
 The workflow automatically:
