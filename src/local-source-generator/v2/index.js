@@ -52,6 +52,19 @@ export {
     normalizeHttpx,
 } from './tools/normalizers/evidence-normalizers.js';
 
+// LLM Client
+export { LLMClient, getLLMClient, LLM_CAPABILITIES } from './orchestrator/llm-client.js';
+
+// Analysis Agents
+export {
+    ArchitectInferAgent,
+    AuthFlowAnalyzer,
+    DataFlowMapper,
+    VulnHypothesizer,
+    BusinessLogicAgent,
+    registerAnalysisAgents,
+} from './agents/analysis/index.js';
+
 // Evaluation
 export { EvaluationHarness, BenchmarkTarget, MetricCalculator, createStandardCorpus } from './evaluation/harness.js';
 
@@ -69,8 +82,9 @@ export function createLSGv2(options = {}) {
         epistemicConfig: options.epistemicConfig || {},
     });
 
-    // Register all recon agents
+    // Register all agents
     registerReconAgents(orchestrator);
+    registerAnalysisAgents(orchestrator);
 
     return orchestrator;
 }
