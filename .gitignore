@@ -1,7 +1,11 @@
 node_modules/
 .shannon-store.json
 agent-logs/
-/audit-logs/
+audit-logs/
+repos/
+sessions/
+deliverables/
+workspace/
 
 # Environment files
 .env
@@ -18,4 +22,4 @@ models.json
 # IDE
 .idea/
 .vscode/
-*.swprepos/
+*.swp
