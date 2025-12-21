@@ -6,7 +6,7 @@ This guide covers installing Shannon Uncontained on your system.
 
 ### Required
 
-- **Node.js 18 or higher** — [Download from nodejs.org](https://nodejs.org/)
+- **Node.js 18 or higher** (Node.js 20 recommended) — [Download from nodejs.org](https://nodejs.org/)
 - **npm** (comes with Node.js)
 - **Git** — For cloning the repository
 
@@ -276,12 +276,12 @@ chmod +x shannon.mjs
 
 Check your Node.js version:
 ```bash
-node --version  # Should be v18.0.0 or higher
+node --version  # Should be v18.0.0 or higher (v20+ recommended)
 ```
 
 Upgrade if needed:
 ```bash
-# Using nvm
+# Using nvm (recommended: install Node.js 20)
 nvm install 20
 nvm use 20
 
