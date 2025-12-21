@@ -41,7 +41,7 @@ Choose **one** of these configurations:
 ```bash
 # Edit .env
 LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-...   # Get from platform.openai.com
+OPENAI_API_KEY=sk-...   # Get from https://platform.openai.com
 ```
 
 ### Option B: Claude (Anthropic)
@@ -49,7 +49,7 @@ OPENAI_API_KEY=sk-...   # Get from platform.openai.com
 ```bash
 # Edit .env
 LLM_PROVIDER=anthropic
-ANTHROPIC_API_KEY=sk-ant-...  # Get from console.anthropic.com
+ANTHROPIC_API_KEY=sk-ant-...  # Get from https://console.anthropic.com
 ```
 
 ### Option C: GitHub Models (Free tier)
