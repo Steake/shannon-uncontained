@@ -25,6 +25,12 @@ import { createShannonHelperServer } from '../../mcp-server/src/index.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Verbosity helpers - check global flags
+const isQuiet = () => global.SHANNON_QUIET === true;
+const isVerbose = () => global.SHANNON_VERBOSE === true;
+const logVerbose = (...args) => { if (isVerbose()) console.log(...args); };
+const logNormal = (...args) => { if (!isQuiet()) console.log(...args); };
+
 /**
  * Convert agent name to prompt name for MCP_AGENT_MAPPING lookup
  *
@@ -271,9 +277,9 @@ async function runClaudePrompt(prompt, sourceDir, allowedTools = 'Read', context
               }
             }
           } else {
-            // Full streaming output - show complete messages with specialist color
-            console.log(colorFn(`\n    🤖 Turn ${turnCount} (${description}):`));
-            console.log(colorFn(`    ${content}`));
+            // Full streaming output - show complete messages with specialist color (verbose only)
+            logVerbose(colorFn(`\n    🤖 Turn ${turnCount} (${description}):`));
+            logVerbose(colorFn(`    ${content}`));
           }
 
           // Log to audit system (crash-safe, append-only)
@@ -314,9 +320,9 @@ async function runClaudePrompt(prompt, sourceDir, allowedTools = 'Read', context
           continue;
 
         } else if (message.type === "tool_use") {
-          console.log(chalk.yellow(`\n    🔧 Using Tool: ${message.name}`));
+          logVerbose(chalk.yellow(`\n    🔧 Using Tool: ${message.name}`));
           if (message.input && Object.keys(message.input).length > 0) {
-            console.log(chalk.gray(`    Input: ${JSON.stringify(message.input, null, 2)}`));
+            logVerbose(chalk.gray(`    Input: ${JSON.stringify(message.input, null, 2)}`));
           }
 
           // Log tool start event
@@ -328,14 +334,14 @@ async function runClaudePrompt(prompt, sourceDir, allowedTools = 'Read', context
             });
           }
         } else if (message.type === "tool_result") {
-          console.log(chalk.green(`    ✅ Tool Result:`));
+          logVerbose(chalk.green(`    ✅ Tool Result:`));
           if (message.content) {
             // Show tool results but truncate if too long
             const resultStr = typeof message.content === 'string' ? message.content : JSON.stringify(message.content, null, 2);
             if (resultStr.length > 500) {
-              console.log(chalk.gray(`    ${resultStr.slice(0, 500)}...\n    [Result truncated - ${resultStr.length} total chars]`));
+              logVerbose(chalk.gray(`    ${resultStr.slice(0, 500)}...\n    [Result truncated - ${resultStr.length} total chars]`));
             } else {
-              console.log(chalk.gray(`    ${resultStr}`));
+              logVerbose(chalk.gray(`    ${resultStr}`));
             }
           }
 

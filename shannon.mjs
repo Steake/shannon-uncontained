@@ -374,6 +374,8 @@ if (args[0] && args[0].includes('shannon.mjs')) {
 let configPath = null;
 let pipelineTestingMode = false;
 let disableLoader = false;
+let quietMode = false;
+let verboseMode = false;
 const nonFlagArgs = [];
 let developerCommand = null;
 let blackboxMode = false;
@@ -392,6 +394,10 @@ for (let i = 0; i < args.length; i++) {
     pipelineTestingMode = true;
   } else if (args[i] === '--disable-loader') {
     disableLoader = true;
+  } else if (args[i] === '--quiet' || args[i] === '-q') {
+    quietMode = true;
+  } else if (args[i] === '--verbose' || args[i] === '-v') {
+    verboseMode = true;
   } else if (developerCommands.includes(args[i])) {
     developerCommand = args[i];
     // Collect remaining args for the developer command
@@ -416,6 +422,10 @@ for (let i = 0; i < args.length; i++) {
     nonFlagArgs.push(args[i]);
   }
 }
+
+// Set global verbosity flags
+global.SHANNON_QUIET = quietMode;
+global.SHANNON_VERBOSE = verboseMode;
 
 // Handle help flag
 if (args.includes('--help') || args.includes('-h') || args.includes('help')) {

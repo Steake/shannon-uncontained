@@ -34,6 +34,8 @@ export function showHelp() {
   console.log(chalk.yellow.bold('OPTIONS:'));
   console.log('  --blackbox           Black-box mode - no source code required');
   console.log('  --config <file>      YAML configuration for auth, scope, and rate limits');
+  console.log('  --quiet, -q          Minimal output (errors and essential status only)');
+  console.log('  --verbose, -v        Detailed output including LLM turns and tool calls');
   console.log('  --pipeline-testing   Use minimal prompts for fast testing');
   console.log('  --disable-loader     Disable animated progress indicator');
   console.log('  --setup-only         Setup session without running agents\n');
