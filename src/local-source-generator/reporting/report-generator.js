@@ -24,6 +24,8 @@ const OWASP_TOP_10 = {
     'A10:2021': { name: 'SSRF', vulnClasses: ['SSRF'] }
 };
 
+import CvssCalculator from './cvss-calculator.js';
+
 /**
  * Map vulnerability class to OWASP category
  */
@@ -59,7 +61,8 @@ export function generateJSONReport(findings, metadata = {}) {
         metadata: {
             ...metadata,
             owaspMapping: true,
-            pciDssMapping: true
+            pciDssMapping: true,
+            cvssScoring: true
         }
     };
 
@@ -70,16 +73,37 @@ export function generateJSONReport(findings, metadata = {}) {
                 for (const vuln of vulns) {
                     const owasp = mapToOWASP(vuln.vulnerabilityClass || '');
 
+                    // Calculate CVSS if vector provided, otherwise estimate
+                    let cvss = { score: 0, vector: '' };
+                    try {
+                        if (vuln.cvssVector) {
+                            cvss = CvssCalculator.calculateScore(vuln.cvssVector);
+                        } else {
+                            // Default estimation based on severity
+                            const vectors = {
+                                critical: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H', // 9.8
+                                high: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N',     // 7.5
+                                medium: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N',   // 6.1
+                                low: 'CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N'       // 4.3
+                            };
+                            cvss = CvssCalculator.calculateScore(vectors[severity] || vectors.low);
+                        }
+                    } catch (e) {
+                        console.error('CVSS calc error:', e);
+                    }
+
                     report.findings.push({
                         id: vuln.id || `FINDING-${report.findings.length + 1}`,
                         title: vuln.vulnerabilityClass || 'Unknown',
                         severity: severity,
+                        cvss: cvss,
                         endpoint: vuln.endpoint,
                         parameter: vuln.matchedParams?.join(', ') || '',
                         description: vuln.description || `Potential ${vuln.vulnerabilityClass} vulnerability`,
                         owasp: owasp,
                         exploitHints: vuln.exploitHints || [],
-                        evidence: vuln.evidence || null
+                        evidence: vuln.evidence || null,
+                        remediation: vuln.remediation || null // Includes patch if available
                     });
 
                     report.summary.bySeverity[severity] = (report.summary.bySeverity[severity] || 0) + 1;
