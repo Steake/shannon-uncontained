@@ -31,6 +31,12 @@ export function showHelp() {
   console.log('  ./shannon.mjs --list-agents');
   console.log('  ./shannon.mjs --cleanup [session-id]\n');
 
+  console.log(chalk.yellow.bold('LSG v2 (Local Source Generator):'));
+  console.log('  cd src/local-source-generator/v2');
+  console.log('  node test-lsg-v2.mjs <WEB_URL> [output_dir]');
+  console.log('  node test-suite.mjs                          # Run 39-test suite');
+  console.log(chalk.gray('  World-model-first architecture with epistemic reasoning\n'));
+
   console.log(chalk.yellow.bold('OPTIONS:'));
   console.log('  --blackbox           Black-box mode - no source code required');
   console.log('  --config <file>      YAML configuration for auth, scope, and rate limits');
@@ -54,16 +60,17 @@ export function showHelp() {
   console.log('  ./shannon.mjs --run-phase exploitation');
   console.log('  ./shannon.mjs --run-all\n');
 
-  console.log(chalk.yellow.bold('BLACK-BOX CAPABILITIES:'));
-  console.log('  • Technology fingerprinting (frameworks, CMS, WAF)');
-  console.log('  • API discovery (OpenAPI, GraphQL, JS extraction)');
-  console.log('  • Shadow IT detection (cloud buckets, dev environments)');
-  console.log('  • Vulnerability hypothesis generation');
-  console.log('  • Synthetic source code generation for agent analysis\n');
+  console.log(chalk.yellow.bold('LSG v2 CAPABILITIES (15 Agents):'));
+  console.log('  • World Model: EvidenceGraph → TargetModel → ArtifactManifest');
+  console.log('  • Recon: NetRecon, Crawler, TechFingerprinter, JSHarvester, APIDiscoverer, SubdomainHunter');
+  console.log('  • Analysis: ArchitectInfer, AuthFlowAnalyzer, DataFlowMapper, VulnHypothesizer, BusinessLogic');
+  console.log('  • Synthesis: SourceGen, SchemaGen, TestGen, Documentation');
+  console.log('  • Epistemic Ledger: EBSL/EQBSL uncertainty quantification\n');
 
   console.log(chalk.yellow.bold('ENVIRONMENT VARIABLES:'));
   console.log('  GITHUB_TOKEN         GitHub token for LLM API (default provider)');
   console.log('  LLM_PROVIDER         Override: github, openai, ollama, llamacpp');
+  console.log('  LLM_MODEL            Override default model for provider');
   console.log('  PENTEST_MAX_RETRIES  Number of retries for AI agents (default: 3)');
 }
 

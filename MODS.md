@@ -4,6 +4,81 @@ This document tracks significant modifications made to the Shannon codebase.
 
 ---
 
+## LSG v2 - World Model First Architecture (2025-12-21)
+
+### Overview
+Complete rewrite of the Local Source Generator using a "World Model First" architecture with epistemic reasoning. Implements 15 agents across reconnaissance, analysis, and synthesis phases.
+
+### Architecture
+
+```
+EvidenceGraph → TargetModel → ArtifactManifest
+       ↑              ↓
+  Recon Agents   Synthesis Agents
+       ↑              ↓
+  Tool Runners   Validation Harness
+```
+
+### Components Implemented
+
+#### World Model Spine
+- **`worldmodel/evidence-graph.js`** — Append-only event store with content hashing
+- **`worldmodel/target-model.js`** — Normalized entity graph
+- **`worldmodel/artifact-manifest.js`** — Output tracking with validation status
+
+#### Epistemic Ledger
+- **`epistemics/ledger.js`** — Full EBSL/EQBSL implementation
+  - Subjective Logic opinions (b, d, u, a)
+  - Vector evidence aggregation
+  - Source reputation discounting
+  - ECE calibration metrics
+
+#### Orchestrator
+- **`orchestrator/scheduler.js`** — Pipeline controller with caching
+- **`orchestrator/streaming.js`** — Real-time delta emission
+- **`orchestrator/llm-client.js`** — Capability-based LLM routing
+
+#### 15 Agents
+
+| Phase | Agent | Purpose |
+|:------|:------|:--------|
+| Recon | `NetReconAgent` | Port scanning (nmap) |
+| Recon | `CrawlerAgent` | Endpoint discovery (katana, gau) |
+| Recon | `TechFingerprinterAgent` | Framework detection |
+| Recon | `JSHarvesterAgent` | JavaScript bundle analysis |
+| Recon | `APIDiscovererAgent` | OpenAPI/GraphQL discovery |
+| Recon | `SubdomainHunterAgent` | Subdomain enumeration |
+| Analysis | `ArchitectInferAgent` | Architecture inference |
+| Analysis | `AuthFlowAnalyzer` | Authentication flow detection |
+| Analysis | `DataFlowMapper` | Source-to-sink analysis |
+| Analysis | `VulnHypothesizer` | OWASP vulnerability hypotheses |
+| Analysis | `BusinessLogicAgent` | Workflow/state machine detection |
+| Synthesis | `SourceGenAgent` | Framework-aware code generation |
+| Synthesis | `SchemaGenAgent` | OpenAPI/GraphQL schema generation |
+| Synthesis | `TestGenAgent` | API and security test generation |
+| Synthesis | `DocumentationAgent` | Model-driven documentation |
+
+#### Synthesis Infrastructure
+- **`synthesis/scaffold-packs/`** — Express.js and FastAPI templates
+- **`synthesis/validators/validation-harness.js`** — Parse, lint, typecheck validation
+
+### Test Coverage
+- **39 tests** across 12 component categories
+- Run: `cd src/local-source-generator/v2 && node test-suite.mjs`
+
+### Usage
+```bash
+cd src/local-source-generator/v2
+node test-lsg-v2.mjs https://example.com ./output
+```
+
+### Statistics
+- **34 files** created
+- **8,831 lines** of JavaScript
+- **100%** test pass rate
+
+---
+
 ## Multi-Provider LLM Infrastructure (2025-12-20)
 
 ### Overview
@@ -51,7 +126,7 @@ LLM_BASE_URL=https://your-proxy.com/v1
 
 ---
 
-## Local Source Generator (2025-12-20)
+## Local Source Generator v1 (2025-12-20)
 
 ### Overview
 Black-box reconnaissance capability for targets without source code access.
@@ -86,3 +161,4 @@ Renamed fork to "Shannon Uncontained" with new README and documentation.
 - **`LSG-TODO.md`** — Hitchens-esque roadmap with phase structure
 
 ---
+

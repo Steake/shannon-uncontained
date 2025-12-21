@@ -45,10 +45,10 @@ This fork addresses these assumptions. We call it "Uncontained" because:
 | Native execution | Via Docker | **Direct** |
 | Black-box reconnaissance | ❌ | **✅** |
 | Multi-provider LLM | Claude only | **Claude, OpenAI, GitHub Models, Ollama, llama.cpp, LM Studio** |
-| Local source generation | ❌ | **✅** |
-| Synthetic pseudo-source | ❌ | **✅** |
-| Advanced analyzers | ❌ | **✅ (9 specialized modules)** |
-| LLM-powered inference | ❌ | **✅** |
+| LSG v2 World Model | ❌ | **✅ (15 specialized agents)** |
+| Epistemic reasoning | ❌ | **✅ (EBSL/EQBSL)** |
+| Synthesis agents | ❌ | **✅ (SourceGen, SchemaGen, TestGen, Docs)** |
+| Validation harness | ❌ | **✅ (Parse, Lint, Typecheck)** |
 | CI/CD integration | ❌ | **✅ (GitHub Actions)** |
 | SARIF reporting | ❌ | **✅** |
 | OWASP Top 10 mapping | ❌ | **✅** |
@@ -388,27 +388,43 @@ Validated findings compiled into actionable reports with:
 - OWASP Top 10 2021 mapping for compliance
 - Comprehensive audit trail with timestamps
 
-### Analyzer Modules *(Fork Addition)*
+### LSG v2 Agents *(Architecture Rewrite)*
 
-The Local Source Generator includes nine specialized analyzers for comprehensive black-box reconnaissance:
+The Local Source Generator v2 implements a "World Model First" architecture with 15 specialized agents:
 
-| Analyzer | Purpose | Key Capabilities |
-|:---------|:--------|:-----------------|
-| **API Discovery** | Find and document APIs | OpenAPI/Swagger detection, GraphQL introspection, endpoint extraction from JS bundles, `schemathesis` config generation |
-| **Fingerprinter** | Identify technology stack | Framework detection (React, Angular, Vue, Rails, Django), CMS identification (WordPress, Drupal), WAF/CDN detection (Cloudflare, Akamai), version enumeration |
-| **Shadow IT** | Discover forgotten infrastructure | Cloud asset correlation (AWS, Azure, GCP), dev/staging environment detection, S3 bucket identification, Git leakage scanning |
-| **Dark Matter** | Find hidden endpoints | Comment-based discovery, obfuscated code patterns, WebSocket identification, hidden directory scanning (`/admin`, `/backup`, etc.) |
-| **Ghost Traffic** | Generate synthetic requests | Traffic pattern replay, adversarial fuzzing, race condition simulation, behavioral user mimicry |
-| **Misconfig Detector** | Find developer mistakes | Debug flag detection (`?debug=true`), CSS-hidden features (`display:none`), hardcoded secrets (AWS keys, GitHub tokens, passwords), CORS misconfigurations, leaked TODOs/FIXMEs |
-| **Vuln Mapper** | Map vulnerabilities | OWASP class mapping, input vector identification, source-to-sink inference, exploit hypothesis generation |
-| **LLM Analyzer** | AI-powered inference | Architecture inference from behavior, data flow modeling, API pattern recognition, authentication flow detection |
-| **Network Recon** | Infrastructure discovery | Port scanning (`nmap`), subdomain enumeration (`subfinder`), service fingerprinting (`whatweb`) |
+```
+EvidenceGraph → TargetModel → ArtifactManifest
+       ↑              ↓
+  Recon Agents   Synthesis Agents
+       ↑              ↓
+  Tool Runners   Validation Harness
+```
 
-All analyzers include:
-- Graceful degradation when tools are unavailable
-- Timeout handling for network operations
-- Structured JSON output for downstream processing
-- Comprehensive test coverage
+| Phase | Agent | Purpose | Tools/Methods |
+|:------|:------|:--------|:--------------|
+| **Recon** | `NetReconAgent` | Infrastructure scanning | nmap port scanning |
+| **Recon** | `CrawlerAgent` | Endpoint discovery | katana, gau historical URLs |
+| **Recon** | `TechFingerprinterAgent` | Framework detection | whatweb, httpx |
+| **Recon** | `JSHarvesterAgent` | JavaScript analysis | Bundle extraction, AST parsing |
+| **Recon** | `APIDiscovererAgent` | API schema discovery | OpenAPI, GraphQL introspection |
+| **Recon** | `SubdomainHunterAgent` | Subdomain enumeration | subfinder |
+| **Analysis** | `ArchitectInferAgent` | Architecture inference | LLM-powered analysis |
+| **Analysis** | `AuthFlowAnalyzer` | Auth flow detection | Token/session analysis |
+| **Analysis** | `DataFlowMapper` | Data flow tracing | Source-to-sink mapping |
+| **Analysis** | `VulnHypothesizer` | Vulnerability hypotheses | OWASP-grounded generation |
+| **Analysis** | `BusinessLogicAgent` | Workflow detection | State machine identification |
+| **Synthesis** | `SourceGenAgent` | Code generation | Express/FastAPI scaffolds |
+| **Synthesis** | `SchemaGenAgent` | Schema generation | OpenAPI, GraphQL schemas |
+| **Synthesis** | `TestGenAgent` | Test generation | Jest/Supertest, security tests |
+| **Synthesis** | `DocumentationAgent` | Documentation | Model-driven docs with provenance |
+
+**Key Features:**
+- **Epistemic Ledger**: EBSL/EQBSL uncertainty quantification for every claim
+- **Validation Harness**: Parse, lint, typecheck validation for generated code
+- **Scaffold Packs**: Framework-specific templates (Express.js, FastAPI)
+- **39 Tests**: Comprehensive test suite across 12 component categories
+
+All agents follow strict contracts and emit evidence through the world model spine.
 
 ---
 

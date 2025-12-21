@@ -20,15 +20,62 @@ This is **Shannon Uncontained**, a fork of the original Shannon project:
 ### Key Differences from Upstream
 
 1. **No Docker requirement** — Native Node.js execution is the default
-2. **Black-box reconnaissance** — Local Source Generator for targets without source code
-3. **Multi-provider LLM** — Claude, OpenAI, and GitHub Models support
-4. **GitHub Models integration** — Uses `openai/gpt-4.1` via GitHub's inference API
+2. **LSG v2** — World-model-first architecture with 15 specialized agents
+3. **Epistemic Reasoning** — EBSL/EQBSL uncertainty quantification
+4. **Multi-provider LLM** — Claude, OpenAI, GitHub Models, and local providers
 
 ### Branch Strategy
 
 - `main` — Stable fork releases
-- `feature/local-source-generator` — Active development branch for black-box features
 - Upstream sync happens manually; we cherry-pick relevant updates
+
+---
+
+## 🏗️ LSG v2 Architecture
+
+### World Model First
+
+All data flows through a canonical spine:
+
+```
+EvidenceGraph → TargetModel → ArtifactManifest
+       ↑              ↓
+  Recon Agents   Synthesis Agents
+       ↑              ↓
+  Tool Runners   Validation Harness
+```
+
+### 15 Agents
+
+| Phase | Agent | Purpose |
+|:------|:------|:--------|
+| Recon | `NetReconAgent` | Port scanning (nmap) |
+| Recon | `CrawlerAgent` | Endpoint discovery (katana, gau) |
+| Recon | `TechFingerprinterAgent` | Framework detection (whatweb) |
+| Recon | `JSHarvesterAgent` | JavaScript bundle analysis |
+| Recon | `APIDiscovererAgent` | OpenAPI/GraphQL discovery |
+| Recon | `SubdomainHunterAgent` | Subdomain enumeration (subfinder) |
+| Analysis | `ArchitectInferAgent` | Architecture inference via LLM |
+| Analysis | `AuthFlowAnalyzer` | Authentication flow detection |
+| Analysis | `DataFlowMapper` | Source-to-sink data flow analysis |
+| Analysis | `VulnHypothesizer` | OWASP vulnerability hypotheses |
+| Analysis | `BusinessLogicAgent` | Workflow/state machine detection |
+| Synthesis | `SourceGenAgent` | Framework-aware code generation |
+| Synthesis | `SchemaGenAgent` | OpenAPI/GraphQL schema generation |
+| Synthesis | `TestGenAgent` | API and security test generation |
+| Synthesis | `DocumentationAgent` | Model-driven documentation |
+
+### Key Components
+
+| Component | Path | Purpose |
+|:----------|:-----|:--------|
+| `EvidenceGraph` | `v2/worldmodel/evidence-graph.js` | Append-only event store |
+| `TargetModel` | `v2/worldmodel/target-model.js` | Normalized entity graph |
+| `ArtifactManifest` | `v2/worldmodel/artifact-manifest.js` | Output tracking |
+| `EpistemicLedger` | `v2/epistemics/ledger.js` | EBSL/EQBSL claims |
+| `Orchestrator` | `v2/orchestrator/scheduler.js` | Pipeline controller |
+| `LLMClient` | `v2/orchestrator/llm-client.js` | Capability-based routing |
+| `ValidationHarness` | `v2/synthesis/validators/validation-harness.js` | Code validation |
 
 ---
 
@@ -46,59 +93,12 @@ Document all significant changes:
 - Configuration changes
 - Dependency additions
 
-Format:
-```markdown
-## [Feature Name] (YYYY-MM-DD)
-
-### Overview
-Brief description of what was added/changed.
-
-### Changes Made
-- **`path/to/file.js`** — What was modified
-- **`path/to/new-file.js`** — [NEW] What it does
-
-### Configuration
-Any environment variables or config changes needed.
-```
-
-#### 2. `LSG-TODO.md` — Local Source Generator Roadmap
-
-If working on black-box reconnaissance features:
-- Check items off as completed (`[x]`)
-- Mark items in progress (`[/]`)
-- Add new items discovered during development
-- Update priority table if priorities shift
-
-#### 3. `README.md` — User-Facing Documentation
+#### 2. `README.md` — User-Facing Documentation
 
 Update if:
 - Adding new CLI flags or usage patterns
 - Changing installation requirements
 - Adding new features users should know about
-
----
-
-## 🎯 Current Development Focus
-
-### Priority Tasks (from LSG-TODO.md)
-
-| Priority | Task | Status |
-|:---------|:-----|:------:|
-| **P0** | Error handling & graceful degradation | 🚧 |
-| **P0** | Auto-detect black-box mode | ❌ |
-| **P0** | Multi-provider LLM support | ✅ |
-| **P0** | LLM & Proxy Infrastructure (Phase 1.1) | ✅ |
-| **P1** | YAML config support | 🚧 |
-| **P1** | Improve pseudo-source quality | ❌ |
-
-### Implementation Guidance
-
-Follow the phased approach in `LSG-TODO.md`:
-
-1. **Phase 1: Core Stability** — Error handling, output quality, testing
-2. **Phase 2: Pipeline Integration** — Shannon core integration, config system
-3. **Phase 3: Advanced Features** — LLM analysis, API discovery, fingerprinting
-4. **Phase 4: Enterprise** — CI/CD, reporting, compliance (low priority)
 
 ---
 
@@ -110,7 +110,7 @@ Follow the phased approach in `LSG-TODO.md`:
 # Cloud Providers (one of these)
 GITHUB_TOKEN=ghp_...           # For GitHub Models
 OPENAI_API_KEY=sk-...          # For OpenAI
-ANTHROPIC_API_KEY=sk-ant-...   # For Claude (requires separate SDK)
+ANTHROPIC_API_KEY=sk-ant-...   # For Claude
 
 # Local Providers (no API key needed)
 LLM_PROVIDER=ollama            # Ollama (localhost:11434)
@@ -123,30 +123,29 @@ LLM_BASE_URL=https://your-endpoint.com/v1
 
 # Optional
 LLM_MODEL=codellama            # Override default model
-CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 ```
 
 ### Key Files
 
 | File | Purpose |
 |:-----|:--------|
-| `src/ai/llm-client.js` | Multi-provider LLM client (OpenAI SDK compatible) |
-| `src/ai/llm-client.test.js` | Unit tests for provider configuration |
-| `local-source-generator.mjs` | Black-box reconnaissance entry point |
-| `src/local-source-generator/` | LSG module components |
-| `src/prompts/prompt-manager.js` | Prompt loading and variable injection |
-| `prompts/pre-recon-code.txt` | Pre-reconnaissance prompt |
+| `src/local-source-generator/v2/` | LSG v2 implementation |
+| `src/local-source-generator/v2/index.js` | Main exports |
+| `src/local-source-generator/v2/test-suite.mjs` | 39-test comprehensive suite |
+| `src/local-source-generator/v2/test-lsg-v2.mjs` | Live target testing |
+| `src/ai/llm-client.js` | Multi-provider LLM client |
+| `src/ai/claude-executor.js` | Claude-specific executor |
 
-### Supported LLM Providers
+### Running Tests
 
-| Provider | Default Endpoint | Default Model |
-|:---------|:-----------------|:--------------|
-| `github` | `models.github.ai/inference` | `openai/gpt-4.1` |
-| `openai` | `api.openai.com/v1` | `gpt-4o` |
-| `ollama` | `localhost:11434/v1` | `llama3.2` |
-| `llamacpp` | `localhost:8080/v1` | `local-model` |
-| `lmstudio` | `localhost:1234/v1` | `local-model` |
-| `custom` | *(requires LLM_BASE_URL)* | `default` |
+```bash
+# LSG v2 unit tests
+cd src/local-source-generator/v2
+node test-suite.mjs             # 39 tests across 12 categories
+
+# Live target test
+node test-lsg-v2.mjs https://example.com ./output
+```
 
 ---
 
@@ -156,14 +155,14 @@ CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 2. **Don't assume source code access** — Black-box is a first-class mode
 3. **Don't hardcode Claude** — Multi-provider support must be maintained
 4. **Don't commit test outputs** — `test-output*/` directories are gitignored
-5. **Don't forget to update docs** — MODS.md and LSG-TODO.md must stay current
+5. **Don't forget to update docs** — MODS.md must stay current
 
 ---
 
 ## 📝 Commit Message Format
 
 ```
-type: Short description
+type(scope): Short description
 
 - Detail 1
 - Detail 2
@@ -176,6 +175,11 @@ Types:
 - `refactor:` — Code change that neither fixes nor adds
 - `test:` — Adding tests
 - `chore:` — Maintenance tasks
+
+Scopes:
+- `lsg-v2` — Local Source Generator v2
+- `cli` — Command-line interface
+- `llm` — LLM client and providers
 
 ---
 
@@ -190,4 +194,5 @@ If upstream accepts any of our features, we consider that a success.
 
 ---
 
-*Last updated: 2025-12-20*
+*Last updated: 2025-12-21*
+
