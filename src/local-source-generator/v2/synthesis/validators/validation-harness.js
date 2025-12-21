@@ -9,8 +9,8 @@
  * - Runtime: App boot and endpoint testing
  */
 
-import { runTool, isToolAvailable } from '../tools/runners/tool-runner.js';
-import { createEvidenceEvent } from '../worldmodel/evidence-graph.js';
+import { runTool, isToolAvailable } from '../../tools/runners/tool-runner.js';
+import { createEvidenceEvent } from '../../worldmodel/evidence-graph.js';
 
 /**
  * Validation result

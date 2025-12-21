@@ -22,22 +22,16 @@ export {
 } from './epistemics/ledger.js';
 
 // Orchestrator
-export { Orchestrator, PipelineStage, EXECUTION_MODES } from './orchestrator/scheduler.js';
+import { Orchestrator as _Orchestrator, PipelineStage as _PipelineStage, EXECUTION_MODES as _EXECUTION_MODES } from './orchestrator/scheduler.js';
+export { _Orchestrator as Orchestrator, _PipelineStage as PipelineStage, _EXECUTION_MODES as EXECUTION_MODES };
 export { StreamingEmitter, DELTA_TYPES, createJSONLinesWriter, createSSEWriter } from './orchestrator/streaming.js';
 
 // Agents
 export { BaseAgent, AgentContext, AgentRegistry } from './agents/base-agent.js';
 
 // Recon Agents
-export {
-    NetReconAgent,
-    CrawlerAgent,
-    TechFingerprinterAgent,
-    JSHarvesterAgent,
-    APIDiscovererAgent,
-    SubdomainHunterAgent,
-    registerReconAgents,
-} from './agents/recon/index.js';
+import { registerReconAgents as _registerReconAgents, NetReconAgent, CrawlerAgent, TechFingerprinterAgent, JSHarvesterAgent, APIDiscovererAgent, SubdomainHunterAgent } from './agents/recon/index.js';
+export { NetReconAgent, CrawlerAgent, TechFingerprinterAgent, JSHarvesterAgent, APIDiscovererAgent, SubdomainHunterAgent, _registerReconAgents as registerReconAgents };
 
 // Tool Runners
 export { runTool, runToolWithRetry, isToolAvailable, ToolResult, TOOL_TIMEOUTS } from './tools/runners/tool-runner.js';
@@ -56,23 +50,12 @@ export {
 export { LLMClient, getLLMClient, LLM_CAPABILITIES } from './orchestrator/llm-client.js';
 
 // Analysis Agents
-export {
-    ArchitectInferAgent,
-    AuthFlowAnalyzer,
-    DataFlowMapper,
-    VulnHypothesizer,
-    BusinessLogicAgent,
-    registerAnalysisAgents,
-} from './agents/analysis/index.js';
+import { registerAnalysisAgents as _registerAnalysisAgents, ArchitectInferAgent, AuthFlowAnalyzer, DataFlowMapper, VulnHypothesizer, BusinessLogicAgent } from './agents/analysis/index.js';
+export { ArchitectInferAgent, AuthFlowAnalyzer, DataFlowMapper, VulnHypothesizer, BusinessLogicAgent, _registerAnalysisAgents as registerAnalysisAgents };
 
 // Synthesis Agents
-export {
-    SourceGenAgent,
-    SchemaGenAgent,
-    TestGenAgent,
-    DocumentationAgent,
-    registerSynthesisAgents,
-} from './agents/synthesis/index.js';
+import { registerSynthesisAgents as _registerSynthesisAgents, SourceGenAgent, SchemaGenAgent, TestGenAgent, DocumentationAgent } from './agents/synthesis/index.js';
+export { SourceGenAgent, SchemaGenAgent, TestGenAgent, DocumentationAgent, _registerSynthesisAgents as registerSynthesisAgents };
 
 // Scaffold Packs
 export { EXPRESS_SCAFFOLD, FASTAPI_SCAFFOLD, getScaffold, listScaffolds } from './synthesis/scaffold-packs/index.js';
@@ -89,7 +72,7 @@ export { EvaluationHarness, BenchmarkTarget, MetricCalculator, createStandardCor
  * @returns {Orchestrator} Configured orchestrator
  */
 export function createLSGv2(options = {}) {
-    const orchestrator = new Orchestrator({
+    const orchestrator = new _Orchestrator({
         mode: options.mode || 'live',
         maxParallel: options.maxParallel || 4,
         enableCaching: options.enableCaching !== false,
@@ -98,9 +81,9 @@ export function createLSGv2(options = {}) {
     });
 
     // Register all agents
-    registerReconAgents(orchestrator);
-    registerAnalysisAgents(orchestrator);
-    registerSynthesisAgents(orchestrator);
+    _registerReconAgents(orchestrator);
+    _registerAnalysisAgents(orchestrator);
+    _registerSynthesisAgents(orchestrator);
 
     return orchestrator;
 }
