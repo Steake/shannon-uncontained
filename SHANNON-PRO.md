@@ -19,9 +19,9 @@ This document provides an objective comparison of Shannon editions to help users
 | **Core Scanning** |
 | White-box analysis | ✅ | ✅ | ✅ |
 | Black-box reconnaissance | ❌ | ✅ | ❌ |
-| Source-sink analysis | Basic | Basic + synthetic | LLM-powered data flow |
-| CVSS scoring | ❌ | ❌ | ✅ |
-| Remediation guidance | Basic | Basic | Code-level fixes |
+| Source-sink analysis | Basic | **LLM-powered data flow** (v2) | LLM-powered data flow |
+| CVSS scoring | ❌ | ✅ (v3.1 Native) | ✅ |
+| Remediation guidance | Basic | **Code-level fixes** (Git Patches) | Code-level fixes |
 | **LLM Providers** |
 | Claude (Anthropic) | ✅ | ✅ | ✅ |
 | OpenAI / GPT-4 | ❌ | ✅ | ❌ |
@@ -34,11 +34,12 @@ This document provides an objective comparison of Shannon editions to help users
 | CI/CD pipeline support | ❌ | Basic (GitHub Actions) | Full (GitHub, GitLab, Jenkins) |
 | API access | ❌ | ❌ | ✅ |
 | SARIF reporting | ❌ | ✅ | ✅ |
-| Jira/Linear/ServiceNow/Slack | ❌ | ❌ | ✅ |
+| Webhooks (Slack/Discord/JSON) | ❌ | ✅ | ✅ |
+| Jira/Linear/ServiceNow | ❌ | ❌ | ✅ |
 | **Enterprise** |
 | Multi-user & RBAC | ❌ | ❌ | ✅ |
 | SSO/SAML | ❌ | ❌ | ✅ |
-| Audit logs | ❌ | Basic | ✅ |
+| Audit logs | ❌ | ✅ (Local JSON) | ✅ |
 | Compliance reporting (OWASP, PCI-DSS, SOC2) | ❌ | OWASP mapping | ✅ |
 | **Support** |
 | Support | Community | Community | Dedicated + SLA |
