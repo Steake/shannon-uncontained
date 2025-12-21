@@ -65,6 +65,21 @@ export {
     registerAnalysisAgents,
 } from './agents/analysis/index.js';
 
+// Synthesis Agents
+export {
+    SourceGenAgent,
+    SchemaGenAgent,
+    TestGenAgent,
+    DocumentationAgent,
+    registerSynthesisAgents,
+} from './agents/synthesis/index.js';
+
+// Scaffold Packs
+export { EXPRESS_SCAFFOLD, FASTAPI_SCAFFOLD, getScaffold, listScaffolds } from './synthesis/scaffold-packs/index.js';
+
+// Validation Harness
+export { ValidationHarness, ValidationResult, emitValidationEvidence } from './synthesis/validators/validation-harness.js';
+
 // Evaluation
 export { EvaluationHarness, BenchmarkTarget, MetricCalculator, createStandardCorpus } from './evaluation/harness.js';
 
@@ -85,6 +100,7 @@ export function createLSGv2(options = {}) {
     // Register all agents
     registerReconAgents(orchestrator);
     registerAnalysisAgents(orchestrator);
+    registerSynthesisAgents(orchestrator);
 
     return orchestrator;
 }
@@ -94,3 +110,4 @@ export function createLSGv2(options = {}) {
  */
 export const VERSION = '2.0.0-alpha';
 export const ARCHITECTURE = 'world-model-first';
+
