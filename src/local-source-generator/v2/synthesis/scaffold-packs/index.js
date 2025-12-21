@@ -2,8 +2,10 @@
  * Scaffold Packs - Index
  */
 
-export { EXPRESS_SCAFFOLD } from './express-scaffold.js';
-export { FASTAPI_SCAFFOLD } from './fastapi-scaffold.js';
+import { EXPRESS_SCAFFOLD } from './express-scaffold.js';
+import { FASTAPI_SCAFFOLD } from './fastapi-scaffold.js';
+
+export { EXPRESS_SCAFFOLD, FASTAPI_SCAFFOLD };
 
 /**
  * Get scaffold by framework name
@@ -25,3 +27,4 @@ export function getScaffold(framework) {
 export function listScaffolds() {
     return ['express', 'fastapi'];
 }
+
