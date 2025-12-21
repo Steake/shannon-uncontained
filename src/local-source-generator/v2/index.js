@@ -28,11 +28,35 @@ export { StreamingEmitter, DELTA_TYPES, createJSONLinesWriter, createSSEWriter }
 // Agents
 export { BaseAgent, AgentContext, AgentRegistry } from './agents/base-agent.js';
 
+// Recon Agents
+export {
+    NetReconAgent,
+    CrawlerAgent,
+    TechFingerprinterAgent,
+    JSHarvesterAgent,
+    APIDiscovererAgent,
+    SubdomainHunterAgent,
+    registerReconAgents,
+} from './agents/recon/index.js';
+
+// Tool Runners
+export { runTool, runToolWithRetry, isToolAvailable, ToolResult, TOOL_TIMEOUTS } from './tools/runners/tool-runner.js';
+
+// Evidence Normalizers
+export {
+    normalizeNmap,
+    normalizeSubfinder,
+    normalizeWhatweb,
+    normalizeGau,
+    normalizeKatana,
+    normalizeHttpx,
+} from './tools/normalizers/evidence-normalizers.js';
+
 // Evaluation
 export { EvaluationHarness, BenchmarkTarget, MetricCalculator, createStandardCorpus } from './evaluation/harness.js';
 
 /**
- * Create a fully configured LSG v2 instance
+ * Create a fully configured LSG v2 instance with all agents
  * @param {object} options - Configuration options
  * @returns {Orchestrator} Configured orchestrator
  */
@@ -44,6 +68,9 @@ export function createLSGv2(options = {}) {
         streamDeltas: options.streamDeltas !== false,
         epistemicConfig: options.epistemicConfig || {},
     });
+
+    // Register all recon agents
+    registerReconAgents(orchestrator);
 
     return orchestrator;
 }
