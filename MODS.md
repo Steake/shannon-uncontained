@@ -6,6 +6,14 @@ This document tracks significant modifications made to the Shannon codebase.
 
 ## LSG v2 - World Model First Architecture (2025-12-21)
 
+### Timeline
+**Development period:** December 21, 2025 (single day implementation)
+- 17:20 — Phase 1: World Model spine, Epistemic Ledger, Orchestrator
+- 17:28 — Phase 2: Recon Agents and Tool Integration
+- 17:37 — Phase 3: Analysis Agents with LLM Integration
+- 17:45 — Phase 4: Synthesis Agents and Validation Harness
+- 18:06 — Test suite: 39 comprehensive tests (100% pass rate)
+
 ### Overview
 Complete rewrite of the Local Source Generator using a "World Model First" architecture with epistemic reasoning. Implements 15 agents across reconnaissance, analysis, and synthesis phases.
 
@@ -79,7 +87,118 @@ node test-lsg-v2.mjs https://example.com ./output
 
 ---
 
+## GitBook Documentation (2025-12-21)
+
+### Overview
+Comprehensive GitBook-based documentation covering the entire Shannon Uncontained project, including fork philosophy, LSG v2 architecture, epistemic reasoning, and all 15 specialized agents.
+
+### Documentation Structure
+
+```
+docs/
+├── README.md                    # Documentation index
+└── gitbook/
+    ├── README.md               # GitBook landing page
+    ├── SUMMARY.md              # Table of contents
+    ├── book.json               # GitBook configuration
+    ├── introduction.md         # Project introduction
+    ├── installation.md         # Installation guide
+    ├── quick-start.md          # 5-minute quick start
+    ├── fork-philosophy.md      # Why this fork exists
+    └── lsg-v2/
+        ├── README.md           # LSG v2 overview
+        ├── epistemic-reasoning.md  # EBSL/EQBSL deep dive
+        └── [additional chapters]
+```
+
+### Key Documentation Pages
+
+#### Core Pages
+- **Introduction** — Comprehensive project overview with problem statement
+- **Installation** — Step-by-step setup for all LLM providers
+- **Quick Start** — 5-minute guide to first scan
+- **Fork Philosophy** — Why Shannon Uncontained exists, relationship with upstream
+
+#### LSG v2 Documentation
+- **LSG v2 Overview** — World-model-first architecture explanation
+- **Epistemic Reasoning** — 13 evidence dimensions, EBSL/EQBSL, source reputation
+- **Evidence Graph** — Content-hashed immutable event store
+- **Target Model** — Normalized entity graph with deterministic derivation
+- **Artifact Manifest** — Generated code tracking with validation results
+
+#### Architecture Documentation
+- **15 Specialized Agents** — Complete reference for all recon, analysis, and synthesis agents
+- **Orchestration** — Pipeline scheduling, caching, budget enforcement
+- **Validation Harness** — 5-stage validation (parse, lint, typecheck, build, runtime)
+- **Real-Time Streaming** — Delta emission for progressive results
+
+### Features
+
+- **GitBook Integration** — Professional documentation site with search and TOC
+- **Multi-Format Export** — PDF, EPUB, MOBI generation support
+- **Code Examples** — Extensive code samples throughout
+- **Cross-Referencing** — Comprehensive internal links
+- **Mermaid Diagrams** — Architecture visualizations
+- **Plugin Support** — GitHub integration, syntax highlighting, copy-code buttons
+
+### Building the Documentation
+
+```bash
+cd docs/gitbook
+
+# Install GitBook CLI
+npm install -g gitbook-cli
+
+# Install plugins
+gitbook install
+
+# Serve locally (http://localhost:4000)
+gitbook serve
+
+# Build static site
+gitbook build
+
+# Export to PDF
+gitbook pdf . shannon-uncontained-docs.pdf
+```
+
+### Statistics
+- **60+ documentation pages** planned (10+ created)
+- **4 main sections**: Getting Started, Core Concepts, LSG v2, Advanced Topics
+- **Complete API reference** for all major components
+- **Comparison tables** with upstream Shannon
+
+### Files Created
+- `docs/README.md` — Documentation index
+- `docs/gitbook/README.md` — GitBook landing page
+- `docs/gitbook/SUMMARY.md` — Complete table of contents
+- `docs/gitbook/book.json` — GitBook configuration with plugins
+- `docs/gitbook/introduction.md` — Project introduction (2,100 words)
+- `docs/gitbook/installation.md` — Installation guide (1,800 words)
+- `docs/gitbook/quick-start.md` — Quick start guide (2,500 words)
+- `docs/gitbook/fork-philosophy.md` — Fork philosophy (2,200 words)
+- `docs/gitbook/lsg-v2/README.md` — LSG v2 overview (2,600 words)
+- `docs/gitbook/lsg-v2/epistemic-reasoning.md` — Epistemic reasoning deep dive (3,800 words)
+
+### Next Steps
+Additional documentation to be created:
+- Remaining LSG v2 chapters (agents, validation, orchestration)
+- Architecture deep dives (Shannon pipeline, agent system)
+- LLM provider guides (Claude, OpenAI, Ollama, etc.)
+- Advanced topics (CI/CD, custom agents, extending Shannon)
+- Complete API reference
+- FAQ and troubleshooting
+
+---
+
 ## Multi-Provider LLM Infrastructure (2025-12-20)
+
+### Timeline
+**Development period:** December 20, 2025 (single day implementation)
+- 18:41 — Initial multi-provider LLM support
+- 19:12 — Complete Phase 1.1: LLM & Proxy Infrastructure
+- 19:18 — Add LLM provider configuration tests
+- 19:39 — Phase 1.2-1.4: Error Handling, Output Quality, Testing
 
 ### Overview
 Complete rewrite of the LLM client to support multiple providers: GitHub Models, OpenAI, Ollama, llama.cpp, LM Studio, and custom endpoints.
@@ -128,6 +247,11 @@ LLM_BASE_URL=https://your-proxy.com/v1
 
 ## Local Source Generator v1 (2025-12-20)
 
+### Timeline
+**Development period:** December 20, 2025 (initial implementation)
+- 17:32 — Add GitHub Models integration and local source generator
+- 17:33 — Add integration roadmap
+
 ### Overview
 Black-box reconnaissance capability for targets without source code access.
 
@@ -151,6 +275,11 @@ node local-source-generator.mjs --target "https://example.com" --output "./outpu
 ---
 
 ## Fork Renaming (2025-12-20)
+
+### Timeline
+**Fork initiated:** December 18-20, 2025
+- Dec 18: Initial fork from KeygraphHQ/shannon
+- Dec 20 18:38 — Rename to "Shannon Uncontained", add AGENTS.md
 
 ### Overview
 Renamed fork to "Shannon Uncontained" with new README and documentation.

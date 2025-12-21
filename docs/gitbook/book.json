@@ -1,0 +1,70 @@
+{
+  "title": "Shannon Uncontained Documentation",
+  "description": "The AI Pentester, Liberated from Its Container",
+  "author": "Shannon Uncontained Contributors",
+  "language": "en",
+  "gitbook": ">=3.2.3",
+  "root": ".",
+
+  "structure": {
+    "readme": "README.md",
+    "summary": "SUMMARY.md"
+  },
+
+  "plugins": [
+    "github",
+    "code",
+    "anchorjs",
+    "search",
+    "prism",
+    "-highlight",
+    "collapsible-menu",
+    "page-toc-button",
+    "back-to-top-button",
+    "github-buttons",
+    "copy-code-button",
+    "mermaid-gb3"
+  ],
+
+  "pluginsConfig": {
+    "github": {
+      "url": "https://github.com/Steake/shannon"
+    },
+    "github-buttons": {
+      "buttons": [
+        {
+          "user": "Steake",
+          "repo": "shannon",
+          "type": "star",
+          "size": "small",
+          "count": true
+        }
+      ]
+    },
+    "fontsettings": {
+      "theme": "white",
+      "family": "sans",
+      "size": 2
+    },
+    "page-toc-button": {
+      "maxTocDepth": 3,
+      "minTocSize": 2
+    }
+  },
+
+  "variables": {
+    "projectName": "Shannon Uncontained",
+    "version": "2.0.0",
+    "githubRepo": "https://github.com/Steake/shannon",
+    "upstreamRepo": "https://github.com/KeygraphHQ/shannon",
+    "discord": "https://discord.gg/KAqzSHHpRt"
+  },
+
+  "links": {
+    "sidebar": {
+      "GitHub Repository": "https://github.com/Steake/shannon",
+      "Upstream Project": "https://github.com/KeygraphHQ/shannon",
+      "Discord Community": "https://discord.gg/KAqzSHHpRt"
+    }
+  }
+}
