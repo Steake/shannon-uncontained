@@ -8,10 +8,10 @@
  * - Error handling
  */
 
-import { $ } from 'zx';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 
-// Disable zx verbose mode
-$.verbose = false;
+const execAsync = promisify(exec);
 
 /**
  * Tool execution result
@@ -46,7 +46,7 @@ export class ToolResult {
  */
 export async function isToolAvailable(toolName) {
     try {
-        await $`which ${toolName}`;
+        await execAsync(`which ${toolName}`);
         return true;
     } catch {
         return false;
@@ -70,36 +70,29 @@ export async function runTool(command, options = {}) {
     const startTime = Date.now();
 
     try {
-        // Create timeout promise
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('TIMEOUT')), timeout);
+        const { stdout, stderr } = await execAsync(command, {
+            cwd,
+            env: { ...process.env, ...env },
+            timeout,
+            maxBuffer: 1024 * 1024 * 20 // 20MB buffer
         });
-
-        // Create execution promise
-        const execPromise = $({ cwd, env: { ...process.env, ...env } })`${command.split(' ')}`;
-
-        // Race between execution and timeout
-        const result = await Promise.race([execPromise, timeoutPromise]);
 
         return new ToolResult({
             tool: toolName,
             success: true,
-            stdout: result.stdout,
-            stderr: result.stderr,
-            exitCode: result.exitCode,
+            stdout,
+            stderr,
             duration: Date.now() - startTime,
         });
     } catch (err) {
-        const timedOut = err.message === 'TIMEOUT';
-
         return new ToolResult({
             tool: toolName,
             success: false,
             stdout: err.stdout || '',
             stderr: err.stderr || err.message,
-            exitCode: err.exitCode || 1,
+            exitCode: err.code || 1,
             duration: Date.now() - startTime,
-            timedOut,
+            timedOut: err.signal === 'SIGTERM',
             error: err.message,
         });
     }

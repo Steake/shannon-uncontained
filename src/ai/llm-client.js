@@ -1,9 +1,12 @@
 import OpenAI from 'openai';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { $ } from 'zx';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import fs from 'fs/promises';
 import path from 'path';
+
+const execAsync = promisify(exec);
 
 /**
  * Detect and configure LLM provider based on environment variables
@@ -374,12 +377,19 @@ export async function* query({ prompt, options }) {
                         // 1. Native Tools
                         if (functionName === "run_command") {
                             const cmd = functionArgs.command;
-                            // Use zx for command execution in cwd
-                            // Critical: zx $ handles quoting, but here we run partial shell commands sometimes.
-                            // Using explicit standard shell execution
-                            const { stdout, stderr, exitCode } = await $({ cwd: options.cwd, nothrow: true, shell: true })`${cmd}`;
-                            result = stdout + (stderr ? "\nStderr: " + stderr : "");
-                            if (exitCode !== 0) isError = true;
+                            // Use child_process.exec for proper shell interpretation
+                            // This enables redirection (>>, >), pipes (|), and quoted args
+                            try {
+                                const { stdout, stderr } = await execAsync(cmd, {
+                                    cwd: options.cwd,
+                                    maxBuffer: 1024 * 1024 * 20, // 20MB buffer
+                                    timeout: 120000 // 2 minute timeout
+                                });
+                                result = stdout + (stderr ? "\nStderr: " + stderr : "");
+                            } catch (execError) {
+                                result = (execError.stdout || '') + "\nStderr: " + (execError.stderr || execError.message);
+                                isError = true;
+                            }
 
                         } else if (functionName === "read_file") {
                             const filePath = path.resolve(options.cwd, functionArgs.path);

@@ -170,12 +170,14 @@ async function main(webUrl, repoPath, configPath = null, pipelineTestingMode = f
     }
   };
 
-  // Create outputs directory in source directory
+  // Create outputs and deliverables directories in source directory
   try {
     const outputsDir = path.join(sourceDir, 'outputs');
     await fs.ensureDir(outputsDir);
     await fs.ensureDir(path.join(outputsDir, 'schemas'));
     await fs.ensureDir(path.join(outputsDir, 'scans'));
+    // Ensure deliverables directory exists for agent output files
+    await fs.ensureDir(path.join(sourceDir, 'deliverables'));
   } catch (error) {
     throw new PentestError(
       `Failed to create output directories: ${error.message}`,

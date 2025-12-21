@@ -180,7 +180,7 @@ Respond ONLY with the JSON, no other text or markdown.`;
     async callOpenAI(prompt, options) {
         const baseUrl = this.options.baseUrl || 'https://api.openai.com/v1';
 
-        const response = await fetch(`${baseUrl}/chat/completions`, {
+        const response = await this.fetchWithRetry(`${baseUrl}/chat/completions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -193,11 +193,6 @@ Respond ONLY with the JSON, no other text or markdown.`;
                 temperature: options.temperature,
             }),
         });
-
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`OpenAI API error: ${response.status} - ${error}`);
-        }
 
         const data = await response.json();
 
@@ -213,7 +208,7 @@ Respond ONLY with the JSON, no other text or markdown.`;
     async callAnthropic(prompt, options) {
         const baseUrl = this.options.baseUrl || 'https://api.anthropic.com/v1';
 
-        const response = await fetch(`${baseUrl}/messages`, {
+        const response = await this.fetchWithRetry(`${baseUrl}/messages`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -227,11 +222,6 @@ Respond ONLY with the JSON, no other text or markdown.`;
             }),
         });
 
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`Anthropic API error: ${response.status} - ${error}`);
-        }
-
         const data = await response.json();
 
         return {
@@ -240,6 +230,60 @@ Respond ONLY with the JSON, no other text or markdown.`;
                 total_tokens: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
             },
         };
+    }
+
+    /**
+     * Fetch with exponential backoff retry
+     * @param {string} url - URL to fetch
+     * @param {object} options - Fetch options
+     * @param {number} retries - Max retries
+     * @returns {Promise<Response>} Fetch response
+     */
+    async fetchWithRetry(url, options, retries = 3) {
+        let lastError;
+        const baseDelay = 1000;
+
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                const response = await fetch(url, options);
+
+                // Handle rate limits (429) & server errors (5xx)
+                if (response.status === 429 || response.status >= 500) {
+                    const retryAfter = response.headers.get('retry-after');
+                    const delay = retryAfter
+                        ? parseInt(retryAfter, 10) * 1000
+                        : baseDelay * Math.pow(2, attempt); // Exponential backoff
+
+                    if (attempt < retries) {
+                        console.warn(`[LLM] Rate limit/Error ${response.status}. Retrying in ${delay}ms...`);
+                        await new Promise(r => setTimeout(r, delay));
+                        continue;
+                    }
+                }
+
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(`LLM API error: ${response.status} - ${error}`);
+                }
+
+                return response;
+            } catch (error) {
+                lastError = error;
+                // Don't retry client errors (4xx) except 429
+                if (error.message.includes('400') || error.message.includes('401') || error.message.includes('403') || error.message.includes('404')) {
+                    throw error;
+                }
+
+                if (attempt < retries) {
+                    const delay = baseDelay * Math.pow(2, attempt);
+                    console.warn(`[LLM] Connection error. Retrying in ${delay}ms...`);
+                    await new Promise(r => setTimeout(r, delay));
+                    continue;
+                }
+            }
+        }
+
+        throw lastError;
     }
 }
 
