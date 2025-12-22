@@ -358,8 +358,15 @@ export class Orchestrator extends EventEmitter {
         // Derive additional target model relationships from imported evidence
         this.targetModel.deriveFromEvidence(this.evidenceGraph, this.ledger);
 
+        // Debug: Log model stats before synthesis
+        const modelStats = this.targetModel.stats();
+        this.emit('synthesis:model-ready', {
+            endpoints: modelStats.entity_types?.endpoint || 0,
+            total_entities: modelStats.total_entities,
+        });
 
         // Run synthesis agents
+
         const synthesisAgents = [
             'SourceGenAgent',
             'SchemaGenAgent',
@@ -433,7 +440,7 @@ export class Orchestrator extends EventEmitter {
             errors,
             files_generated: Object.values(results)
                 .filter(r => r.success)
-                .flatMap(r => r.files || []),
+                .flatMap(r => r.outputs?.files || []),
             manifest: this.manifest.export(),
         };
     }

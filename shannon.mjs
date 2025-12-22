@@ -165,6 +165,16 @@ program
       const { createLSGv2 } = await import('./src/local-source-generator/v2/index.js');
       const orchestrator = createLSGv2({ mode: 'live' });
 
+      // Add event listeners for debugging
+      orchestrator.on('synthesis:model-ready', (data) => {
+        console.log(chalk.gray(`  Endpoints: ${data.endpoints}`));
+        console.log(chalk.gray(`  Entities: ${data.total_entities}`));
+      });
+      orchestrator.on('synthesis:agent-complete', (data) => {
+        const icon = data.success ? '✅' : '⚠️';
+        console.log(chalk.gray(`  ${icon} ${data.agent}`));
+      });
+
       // Run synthesis
       console.log(chalk.blue('\n🔧 Running synthesis agents...'));
       const result = await orchestrator.runSynthesis(
@@ -172,6 +182,7 @@ program
         workspace,
         { framework: options.framework }
       );
+
 
       if (result.success) {
         console.log(chalk.green(`\n✅ Synthesis complete`));
