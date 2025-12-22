@@ -11,6 +11,7 @@ Added comprehensive LLM provider setup instructions to the main README to help u
 
 ### Modified Files
 - `README.md` — Added "LLM Provider Setup" section with detailed instructions
+- `.env.example` — Added task-specific model configuration options
 
 ### Changes Made
 
@@ -25,6 +26,10 @@ Added comprehensive LLM provider setup instructions to the main README to help u
    - Added step to copy and edit .env file
    - Added warning note about LLM requirement
    - Added link to LLM Provider Setup section
+
+3. **Updated .env.example**
+   - Added task-specific model configuration section
+   - Documents LLM_FAST_MODEL, LLM_SMART_MODEL, LLM_CODE_MODEL
 
 ### Content Added
 - **7 provider configurations** with setup instructions
