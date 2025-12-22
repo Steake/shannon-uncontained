@@ -321,11 +321,12 @@ export class Orchestrator extends EventEmitter {
 
         if (worldModelData.claims) {
             for (const claim of worldModelData.claims) {
-                this.ledger.registerClaim(
-                    claim.subject,
-                    claim.predicate,
-                    { confidence: claim.confidence, eqbsl: claim.eqbsl }
-                );
+                this.ledger.upsertClaim({
+                    claim_type: claim.type || 'observation',
+                    subject: claim.subject,
+                    predicate: claim.predicate || {},
+                    base_rate: claim.eqbsl?.a || 0.5,
+                });
             }
         }
 
