@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import playwright from 'playwright';
 import cliProgress from 'cli-progress';
+import { createHash } from 'node:crypto';
 
 // Import resilience utilities
 import {
@@ -45,7 +46,7 @@ const TOOL_TIMEOUTS = {
 
 
 // Main generator
-export async function generateLocalSource(webUrl, outputDir) {
+export async function generateLocalSource(webUrl, outputDir, options = {}) {
     console.log(chalk.yellow.bold('\n🔍 LOCAL SOURCE GENERATOR'));
 
     // Validate URL
@@ -124,8 +125,105 @@ export async function generateLocalSource(webUrl, outputDir) {
     bar.update(5, { status: 'Done!' });
     bar.stop();
 
+    // Create WorldModel with collected evidence
+    console.log(chalk.blue('  📊 Creating World Model...'));
+    const worldModel = {
+        evidence: [],
+        claims: [],
+        artifacts: [],
+        relations: []
+    };
+
+    // Add evidence from recon
+    if (nmapResults && nmapResults !== 'Nmap scan skipped or failed') {
+        worldModel.evidence.push({
+            id: generateContentId({ type: 'nmap', target: targetDomain }),
+            type: 'evidence',
+            content: { tool: 'nmap', result: nmapResults },
+            sourceAgent: 'NetRecon',
+            timestamp: new Date().toISOString()
+        });
+    }
+
+    if (subfinderResults && subfinderResults !== 'Subfinder skipped or failed') {
+        const subdomains = subfinderResults.split('\n').filter(s => s.trim());
+        worldModel.evidence.push({
+            id: generateContentId({ type: 'subfinder', target: targetDomain }),
+            type: 'evidence',
+            content: { tool: 'subfinder', subdomains },
+            sourceAgent: 'SubdomainHunter',
+            timestamp: new Date().toISOString()
+        });
+    }
+
+    if (whatwebResults && whatwebResults !== 'Whatweb skipped or failed') {
+        worldModel.evidence.push({
+            id: generateContentId({ type: 'whatweb', target: webUrl }),
+            type: 'evidence',
+            content: { tool: 'whatweb', result: whatwebResults },
+            sourceAgent: 'TechFingerprinter',
+            timestamp: new Date().toISOString()
+        });
+    }
+
+    // Add endpoints as evidence
+    endpoints.forEach((ep, i) => {
+        const evId = generateContentId({ endpoint: ep.path, i });
+        worldModel.evidence.push({
+            id: evId,
+            type: 'evidence',
+            content: { type: 'endpoint', ...ep },
+            sourceAgent: 'Crawler',
+            timestamp: new Date().toISOString()
+        });
+
+        // Create a claim for each endpoint
+        const claimId = generateContentId({ claim: ep.path });
+        worldModel.claims.push({
+            id: claimId,
+            subject: ep.path,
+            predicate: 'discovered',
+            object: { method: ep.method, params: ep.params.length },
+            confidence: 0.9,
+            evidenceIds: [evId],
+            timestamp: new Date().toISOString()
+        });
+        worldModel.relations.push({ source: evId, target: claimId, type: 'supports' });
+    });
+
+    // Add JS analysis as evidence
+    jsFiles.forEach((js, i) => {
+        worldModel.evidence.push({
+            id: generateContentId({ jsFile: js.url, i }),
+            type: 'evidence',
+            content: { type: 'javascript', ...js },
+            sourceAgent: 'JSHarvester',
+            timestamp: new Date().toISOString()
+        });
+    });
+
+    // Add artifacts
+    worldModel.artifacts.push({
+        id: generateContentId({ artifact: 'code_analysis' }),
+        type: 'artifact',
+        path: 'deliverables/code_analysis_deliverable.md',
+        artifactType: 'report',
+        timestamp: new Date().toISOString()
+    });
+
+    // Write world model
+    const worldModelPath = path.join(sourceDir, 'world-model.json');
+    await fs.writeJSON(worldModelPath, worldModel, { spaces: 2 });
+    console.log(chalk.green(`  ✅ World Model saved to: ${worldModelPath}`));
+
     console.log(chalk.green(`\n✅ Synthetic source generated at: ${sourceDir}`));
     return sourceDir;
+}
+
+// Helper for generating content-based IDs
+function generateContentId(content) {
+    const canonical = JSON.stringify(content, Object.keys(content).sort());
+    return createHash('sha256').update(canonical).digest('hex').substring(0, 16);
 }
 
 // Wrapper for nmap with resilience
@@ -601,7 +699,7 @@ ${chalk.bold('Examples:')}
 `);
 }
 
-// Main execution if run directly
+// Main execution if run directly (Guard for import)
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (argv.help || argv.h) {
         printHelp();

@@ -23,3 +23,7 @@ models.json
 .idea/
 .vscode/
 *.swp
+
+# Generated scan results
+shannon-results/
+quick-test/
