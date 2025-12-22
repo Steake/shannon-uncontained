@@ -37,7 +37,8 @@ export async function runCommand(target, options) {
     await worldModel.init();
 
     // Note: EpistemicLedger will be integrated in future phases for uncertainty tracking
-    // const ledger = new EpistemicLedger();
+    // eslint-disable-next-line no-unused-vars
+    const ledger = new EpistemicLedger();
 
     // 3. Display Info
     if (!global.SHANNON_QUIET) {
@@ -179,8 +180,18 @@ async function executePipeline(webUrl, sourceDir, session, distributedConfig, to
         await updateSessionWithProgress(session, 'report');
     }
 
-    // Save World Model at end (using correct filename)
-    await worldModel.export(path.join(workspace, 'world-model.json'));
+    // Save World Model at end (best-effort; do not crash pipeline if this fails)
+    try {
+        await worldModel.export(path.join(workspace, 'world-model.json'));
+    } catch (error) {
+        const exportPath = path.join(workspace, 'world-model.json');
+        console.warn(
+            chalk.yellow(
+                `Warning: Failed to export world model to "${exportPath}". The pipeline completed, but evidence export may be incomplete.`
+            )
+        );
+        console.warn(chalk.yellow(`World model export error: ${error.stack || error.message || String(error)}`));
+    }
 }
 
 async function updateSessionWithProgress(session, agentName) {
