@@ -49,6 +49,22 @@ const TOOL_TIMEOUTS = {
 export async function generateLocalSource(webUrl, outputDir, options = {}) {
     console.log(chalk.yellow.bold('\n🔍 LOCAL SOURCE GENERATOR'));
 
+    // Extract CLI skip options
+    const {
+        skipRecon = false,
+        skipScreenshots = false,
+        skipTools = false,
+    } = options;
+
+    if (skipRecon || skipScreenshots || skipTools) {
+        const optsSummary = [
+            skipRecon && 'skipRecon',
+            skipScreenshots && 'skipScreenshots',
+            skipTools && 'skipTools',
+        ].filter(Boolean).join(', ');
+        console.log(chalk.gray(`  (Options) ${optsSummary}`));
+    }
+
     // Validate URL
     let parsedUrl;
     try {
@@ -69,16 +85,18 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
     await fs.ensureDir(path.join(sourceDir, 'deliverables'));
 
     // Check tool availability
-    const requiredTools = ['nmap', 'subfinder', 'whatweb', 'gau', 'katana'];
+    const requiredTools = skipTools ? [] : ['nmap', 'subfinder', 'whatweb', 'gau', 'katana'];
     const toolStatus = await checkToolsAvailability(requiredTools);
 
     const availableTools = Object.entries(toolStatus).filter(([_, available]) => available).map(([name]) => name);
     const missingTools = Object.entries(toolStatus).filter(([_, available]) => !available).map(([name]) => name);
 
-    if (missingTools.length > 0) {
+    if (missingTools.length > 0 && !skipTools) {
         console.log(chalk.yellow(`  ⚠️  Missing tools (will skip): ${missingTools.join(', ')}`));
     }
-    console.log(chalk.blue(`  🔧 Available tools: ${availableTools.join(', ') || 'none'}`));
+    if (!skipTools) {
+        console.log(chalk.blue(`  🔧 Available tools: ${availableTools.join(', ') || 'none'}`));
+    }
 
     // Initialize Progress Bar
     const bar = new cliProgress.SingleBar({
@@ -93,17 +111,17 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
 
     // Step 1: Network reconnaissance (Shannon-compatible)
     bar.update(0, { status: 'Network Reconnaissance...' });
-    const nmapResults = await runNmap(webUrl);
+    const nmapResults = skipRecon ? { ports: [], services: [] } : await runNmap(webUrl);
 
     bar.update(1, { status: 'Domain & Tech Recon...' });
-    const subfinderResults = await runSubfinder(targetDomain);
-    const whatwebResults = await runWhatweb(webUrl);
+    const subfinderResults = skipRecon ? [] : await runSubfinder(targetDomain);
+    const whatwebResults = skipRecon ? {} : await runWhatweb(webUrl);
 
     // Step 2: Active crawling
     bar.update(2, { status: 'Active Crawling & Analysis...' });
-    const endpoints = await discoverEndpoints(webUrl);
-    const jsFiles = await extractJavaScriptFiles(webUrl);
-    const apiSchemas = await discoverAPISchemas(webUrl);
+    const endpoints = skipRecon ? [] : await discoverEndpoints(webUrl);
+    const jsFiles = skipRecon ? [] : await extractJavaScriptFiles(webUrl);
+    const apiSchemas = skipRecon ? [] : await discoverAPISchemas(webUrl);
 
     // Step 3: Generate synthetic source files
     bar.update(3, { status: 'Generating Source Code...' });
@@ -181,6 +199,7 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
         const claimId = generateContentId({ claim: ep.path });
         worldModel.claims.push({
             id: claimId,
+            type: 'claim',
             subject: ep.path,
             predicate: 'discovered',
             object: { method: ep.method, params: ep.params.length },
@@ -208,6 +227,7 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
         type: 'artifact',
         path: 'deliverables/code_analysis_deliverable.md',
         artifactType: 'report',
+        metadata: {},
         timestamp: new Date().toISOString()
     });
 

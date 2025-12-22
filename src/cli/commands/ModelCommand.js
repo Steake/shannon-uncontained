@@ -193,7 +193,7 @@ async function exportHtmlGraph(data, options) {
             break;
     }
 
-    const html = generateGraphHtml(nodes, links, data, viewMode);
+    const html = generateGraphHtml(nodes, links, data);
     await fs.writeFile(outputPath, html);
 
     console.log(chalk.green(`\n✅ Interactive graph exported to: ${outputPath}`));
