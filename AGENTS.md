@@ -72,7 +72,11 @@ EvidenceGraph → TargetModel → ArtifactManifest
 | `EvidenceGraph` | `v2/worldmodel/evidence-graph.js` | Append-only event store |
 | `TargetModel` | `v2/worldmodel/target-model.js` | Normalized entity graph |
 | `ArtifactManifest` | `v2/worldmodel/artifact-manifest.js` | Output tracking |
-| `EpistemicLedger` | `v2/epistemics/ledger.js` | EBSL/EQBSL claims |
+| `EpistemicLedger` | `src/core/EpistemicLedger.js` | EBSL/EQBSL claims |
+| `WorldModel` | `src/core/WorldModel.js` | Unified epistemic world model |
+| `SecurityHeaderAnalyzer` | `src/analyzers/SecurityHeaderAnalyzer.js` | HSTS, CORS, Clickjacking, CSP |
+| `HTTPMethodAnalyzer` | `src/analyzers/HTTPMethodAnalyzer.js` | Dangerous HTTP method detection |
+| `ErrorPatternAnalyzer` | `src/analyzers/ErrorPatternAnalyzer.js` | Stack traces, SQL errors, debug info |
 | `Orchestrator` | `v2/orchestrator/scheduler.js` | Pipeline controller |
 | `LLMClient` | `v2/orchestrator/llm-client.js` | Capability-based routing |
 | `ValidationHarness` | `v2/synthesis/validators/validation-harness.js` | Code validation |

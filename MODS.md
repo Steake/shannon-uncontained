@@ -4,6 +4,53 @@ This document tracks significant modifications made to the Shannon codebase.
 
 ---
 
+## Security Analyzers for WSTG Coverage (2025-12-22)
+
+### Overview
+Implemented 3 new security analyzers to expand WSTG (Web Security Testing Guide) coverage. All analyzers produce claims with full EQBSL tensor support.
+
+### New Components
+
+| Analyzer | Path | WSTG Coverage |
+|:---------|:-----|:--------------|
+| `SecurityHeaderAnalyzer` | `src/analyzers/SecurityHeaderAnalyzer.js` | WSTG-CONF-07, WSTG-CONF-14, WSTG-CLNT-07, WSTG-CLNT-09 |
+| `HTTPMethodAnalyzer` | `src/analyzers/HTTPMethodAnalyzer.js` | WSTG-CONF-06 |
+| `ErrorPatternAnalyzer` | `src/analyzers/ErrorPatternAnalyzer.js` | WSTG-ERRH-01, WSTG-ERRH-02 |
+
+### WSTG Items Now Covered
+
+| Test ID | Test Name | Analyzer |
+|:--------|:----------|:---------|
+| WSTG-CONF-06 | Test HTTP Methods | HTTPMethodAnalyzer |
+| WSTG-CONF-07 | Test HTTP Strict Transport Security | SecurityHeaderAnalyzer |
+| WSTG-CONF-14 | Test HTTP Security Header Misconfigurations | SecurityHeaderAnalyzer |
+| WSTG-ERRH-01 | Testing for Improper Error Handling | ErrorPatternAnalyzer |
+| WSTG-ERRH-02 | Testing for Stack Traces | ErrorPatternAnalyzer |
+| WSTG-CLNT-07 | Test Cross Origin Resource Sharing | SecurityHeaderAnalyzer |
+| WSTG-CLNT-09 | Testing for Clickjacking | SecurityHeaderAnalyzer |
+
+### Test Coverage
+- **30 tests** across 3 analyzers
+- Run: `node --test src/analyzers/*.test.js`
+
+### Features
+- **EQBSL Tensor Output** — All findings include (b, d, u, a) tensors
+- **Multi-Framework Detection** — Stack traces for Java, Python, PHP, Node, .NET, Ruby, Go
+- **SQL Error Detection** — MySQL, PostgreSQL, Oracle, MSSQL, SQLite
+- **CORS Analysis** — Wildcard origins, credential reflection
+- **Clickjacking Protection** — X-Frame-Options and CSP frame-ancestors
+
+### Files Created
+- `src/analyzers/index.js` — Module exports
+- `src/analyzers/SecurityHeaderAnalyzer.js` — 235 lines
+- `src/analyzers/SecurityHeaderAnalyzer.test.js` — 153 lines
+- `src/analyzers/HTTPMethodAnalyzer.js` — 93 lines
+- `src/analyzers/HTTPMethodAnalyzer.test.js` — 107 lines
+- `src/analyzers/ErrorPatternAnalyzer.js` — 159 lines
+- `src/analyzers/ErrorPatternAnalyzer.test.js` — 174 lines
+
+---
+
 ## LSG v2 - World Model First Architecture (2025-12-21)
 
 ### Timeline
