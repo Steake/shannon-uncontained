@@ -18,6 +18,10 @@ import {
     isRetryableError
 } from './src/local-source-generator/utils/resilience.js';
 
+// Import core modules
+import { BudgetManager, BudgetExceededError } from './src/core/BudgetManager.js';
+import { WorldModel } from './src/core/WorldModel.js';
+
 // Core reconnaissance tools
 const TOOLS = {
     // Shannon already uses these: 
@@ -84,6 +88,14 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
     await fs.ensureDir(path.join(sourceDir, 'config'));
     await fs.ensureDir(path.join(sourceDir, 'deliverables'));
 
+    // Initialize BudgetManager for resource constraints
+    const budget = new BudgetManager({
+        maxTimeMs: options.timeout || 600000,  // 10 minutes default
+        maxNetworkRequests: options.maxRequests || 0,  // 0 = unlimited
+        maxToolInvocations: options.maxTools || 50  // Max tools to run
+    });
+    console.log(chalk.cyan(`  📊 Budget: ${(budget.limits.maxTimeMs / 60000).toFixed(1)}min timeout, ${budget.limits.maxToolInvocations} max tools`));
+
     // Check tool availability
     const requiredTools = skipTools ? [] : ['nmap', 'subfinder', 'whatweb', 'gau', 'katana'];
     const toolStatus = await checkToolsAvailability(requiredTools);
@@ -111,17 +123,26 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
 
     // Step 1: Network reconnaissance (Shannon-compatible)
     bar.update(0, { status: 'Network Reconnaissance...' });
-    const nmapResults = skipRecon ? { ports: [], services: [] } : await runNmap(webUrl);
+    budget.check(); // Throws BudgetExceededError if time exceeded
+    budget.track('toolInvocations');
+    const nmapResults = await runNmap(webUrl);
 
     bar.update(1, { status: 'Domain & Tech Recon...' });
-    const subfinderResults = skipRecon ? [] : await runSubfinder(targetDomain);
-    const whatwebResults = skipRecon ? {} : await runWhatweb(webUrl);
+    budget.check();
+    budget.track('toolInvocations');
+    const subfinderResults = await runSubfinder(targetDomain);
+    budget.track('toolInvocations');
+    const whatwebResults = await runWhatweb(webUrl);
 
     // Step 2: Active crawling
     bar.update(2, { status: 'Active Crawling & Analysis...' });
-    const endpoints = skipRecon ? [] : await discoverEndpoints(webUrl);
-    const jsFiles = skipRecon ? [] : await extractJavaScriptFiles(webUrl);
-    const apiSchemas = skipRecon ? [] : await discoverAPISchemas(webUrl);
+    budget.check();
+    budget.track('toolInvocations');
+    const endpoints = await discoverEndpoints(webUrl);
+    budget.track('toolInvocations');
+    const jsFiles = await extractJavaScriptFiles(webUrl);
+    budget.track('toolInvocations');
+    const apiSchemas = await discoverAPISchemas(webUrl);
 
     // Step 3: Generate synthetic source files
     bar.update(3, { status: 'Generating Source Code...' });
@@ -143,98 +164,43 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
     bar.update(5, { status: 'Done!' });
     bar.stop();
 
-    // Create WorldModel with collected evidence
-    console.log(chalk.blue('  📊 Creating World Model...'));
-    const worldModel = {
-        evidence: [],
-        claims: [],
-        artifacts: [],
-        relations: []
-    };
+    // Create WorldModel with collected evidence using proper EQBSL tensors
+    console.log(chalk.blue('  📊 Creating World Model with EQBSL tensors...'));
+    const worldModel = new WorldModel(sourceDir);
+    await worldModel.init();
 
-    // Add evidence from recon
+    // Add evidence from recon tools
     if (nmapResults && nmapResults !== 'Nmap scan skipped or failed') {
-        worldModel.evidence.push({
-            id: generateContentId({ type: 'nmap', target: targetDomain }),
-            type: 'evidence',
-            content: { tool: 'nmap', result: nmapResults },
-            sourceAgent: 'NetRecon',
-            timestamp: new Date().toISOString()
-        });
+        worldModel.addEvidence({ tool: 'nmap', result: nmapResults }, 'NetRecon');
     }
 
     if (subfinderResults && subfinderResults !== 'Subfinder skipped or failed') {
         const subdomains = subfinderResults.split('\n').filter(s => s.trim());
-        worldModel.evidence.push({
-            id: generateContentId({ type: 'subfinder', target: targetDomain }),
-            type: 'evidence',
-            content: { tool: 'subfinder', subdomains },
-            sourceAgent: 'SubdomainHunter',
-            timestamp: new Date().toISOString()
-        });
+        worldModel.addEvidence({ tool: 'subfinder', subdomains }, 'SubdomainHunter');
     }
 
     if (whatwebResults && whatwebResults !== 'Whatweb skipped or failed') {
-        worldModel.evidence.push({
-            id: generateContentId({ type: 'whatweb', target: webUrl }),
-            type: 'evidence',
-            content: { tool: 'whatweb', result: whatwebResults },
-            sourceAgent: 'TechFingerprinter',
-            timestamp: new Date().toISOString()
-        });
+        worldModel.addEvidence({ tool: 'whatweb', result: whatwebResults }, 'TechFingerprinter');
     }
 
-    // Add endpoints as evidence
-    endpoints.forEach((ep, i) => {
-        const evId = generateContentId({ endpoint: ep.path, i });
-        worldModel.evidence.push({
-            id: evId,
-            type: 'evidence',
-            content: { type: 'endpoint', ...ep },
-            sourceAgent: 'Crawler',
-            timestamp: new Date().toISOString()
-        });
-
-        // Create a claim for each endpoint
-        const claimId = generateContentId({ claim: ep.path });
-        worldModel.claims.push({
-            id: claimId,
-            type: 'claim',
-            subject: ep.path,
-            predicate: 'discovered',
-            object: { method: ep.method, params: ep.params.length },
-            confidence: 0.9,
-            evidenceIds: [evId],
-            timestamp: new Date().toISOString()
-        });
-        worldModel.relations.push({ source: evId, target: claimId, type: 'supports' });
+    // Add endpoints as evidence with claims
+    endpoints.forEach((ep) => {
+        const evId = worldModel.addEvidence({ type: 'endpoint', ...ep }, 'Crawler');
+        worldModel.addClaim(ep.path, 'discovered', { method: ep.method, params: ep.params.length }, 0.9, [evId]);
     });
 
     // Add JS analysis as evidence
-    jsFiles.forEach((js, i) => {
-        worldModel.evidence.push({
-            id: generateContentId({ jsFile: js.url, i }),
-            type: 'evidence',
-            content: { type: 'javascript', ...js },
-            sourceAgent: 'JSHarvester',
-            timestamp: new Date().toISOString()
-        });
+    jsFiles.forEach((js) => {
+        worldModel.addEvidence({ type: 'javascript', ...js }, 'JSHarvester');
     });
 
     // Add artifacts
-    worldModel.artifacts.push({
-        id: generateContentId({ artifact: 'code_analysis' }),
-        type: 'artifact',
-        path: 'deliverables/code_analysis_deliverable.md',
-        artifactType: 'report',
-        metadata: {},
-        timestamp: new Date().toISOString()
-    });
+    worldModel.addArtifact('deliverables/code_analysis_deliverable.md', 'report');
 
-    // Write world model
-    const worldModelPath = path.join(sourceDir, 'world-model.json');
-    await fs.writeJSON(worldModelPath, worldModel, { spaces: 2 });
-    console.log(chalk.green(`  ✅ World Model saved to: ${worldModelPath}`));
+    // Export world model (now includes EQBSL tensors on all evidence and claims)
+    const worldModelPath = await worldModel.export();
+    console.log(chalk.green(`  ✅ World Model saved with EQBSL tensors: ${worldModelPath}`));
+    console.log(chalk.gray(`     Evidence: ${worldModel.evidence.size}, Claims: ${worldModel.claims.size}`));
 
     console.log(chalk.green(`\n✅ Synthetic source generated at: ${sourceDir}`));
     return sourceDir;
