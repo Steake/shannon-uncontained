@@ -94,6 +94,10 @@ git clone https://github.com/Steake/shannon-uncontained.git
 cd shannon-uncontained
 npm install
 
+# Configure your LLM provider (see LLM Provider Setup below)
+cp .env.example .env
+# Edit .env with your API key or local provider settings
+
 # Generate reconnaissance for a target
 ./shannon.mjs generate https://example.com
 
@@ -104,6 +108,8 @@ npm install
 ./shannon.mjs model export-html --workspace shannon-results/repos/example.com --view provenance
 ```
 
+> **⚠️ Important:** Shannon requires an LLM provider to function. See the [LLM Provider Setup](#llm-provider-setup) section below for configuration instructions.
+
 ### Graph View Modes
 
 | Mode | Description |
@@ -111,6 +117,146 @@ npm install
 | `topology` | Infrastructure network: subdomains → path categories → ports |
 | `evidence` | Agent provenance: which agent discovered what evidence |
 | `provenance` | EBSL-native: source → event_type → target with tensor edges |
+
+---
+
+## LLM Provider Setup
+
+Shannon requires an LLM provider to perform analysis and generate code. We support multiple providers to fit different needs and budgets.
+
+### Quick Setup
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Choose and configure **one** of the providers below.
+
+### Cloud Providers (Require API Key)
+
+#### GitHub Models (Recommended for Free Tier)
+
+Free access to GPT-4 and other models via GitHub's infrastructure:
+
+```bash
+# .env
+GITHUB_TOKEN=ghp_your_token_here
+```
+
+Get your token: [github.com/settings/tokens](https://github.com/settings/tokens)
+
+**Cost:** Free (with rate limits)
+
+#### OpenAI
+
+Access to GPT-4, GPT-4o, and other OpenAI models:
+
+```bash
+# .env
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-your_key_here
+```
+
+Get your key: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+
+**Cost:** ~$0.01-0.10 per request
+
+#### Anthropic Claude
+
+Access to Claude 3.5 Sonnet, Opus, and other Claude models:
+
+```bash
+# .env
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-your_key_here
+```
+
+Get your key: [console.anthropic.com](https://console.anthropic.com/)
+
+**Cost:** ~$0.01-0.10 per request
+
+### Local Providers (No API Key Required)
+
+Run models entirely on your machine with no API costs:
+
+#### Ollama
+
+```bash
+# Install Ollama from ollama.com
+ollama pull llama3.2
+
+# .env
+LLM_PROVIDER=ollama
+LLM_MODEL=llama3.2
+```
+
+Default endpoint: `http://localhost:11434/v1`
+
+#### llama.cpp
+
+```bash
+# Run llama.cpp server
+python -m llama_cpp.server --model your_model.gguf
+
+# .env
+LLM_PROVIDER=llamacpp
+LLM_MODEL=local-model
+```
+
+Default endpoint: `http://localhost:8080/v1`
+
+#### LM Studio
+
+```bash
+# Download and start LM Studio from lmstudio.ai
+# Start local server from the UI
+
+# .env
+LLM_PROVIDER=lmstudio
+LLM_MODEL=local-model
+```
+
+Default endpoint: `http://localhost:1234/v1`
+
+### Custom Endpoint
+
+Use any OpenAI-compatible API endpoint:
+
+```bash
+# .env
+LLM_PROVIDER=custom
+LLM_BASE_URL=https://your-endpoint.com/v1
+LLM_MODEL=your-model-name
+# Optional: Include an API key if needed
+OPENAI_API_KEY=your-key-here
+```
+
+This works with:
+- Azure OpenAI endpoints
+- Self-hosted inference servers (vLLM, TGI)
+- Corporate proxies
+- Any OpenAI-compatible API
+
+### Advanced Configuration
+
+Override specific models for different tasks:
+
+```bash
+# .env
+LLM_FAST_MODEL=gpt-3.5-turbo      # For quick classification
+LLM_SMART_MODEL=gpt-4o            # For architecture inference
+LLM_CODE_MODEL=claude-sonnet-3.5  # For code generation
+```
+
+Set custom endpoints for any provider:
+
+```bash
+# Override base URL (useful for proxies)
+LLM_BASE_URL=https://your-proxy.com/v1
+```
+
+For complete configuration options, see [`.env.example`](.env.example).
 
 ---
 
