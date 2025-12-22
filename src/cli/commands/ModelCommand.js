@@ -401,6 +401,69 @@ function buildEvidenceGraph(data) {
             type: 'produced',
             eqbsl: { b: 0.9, d: 0.02, u: 0.08, a: 0.5 }
         });
+
+        // --- ENHANCEMENT: Parse content for deeper nodes ---
+
+        // 1. Nmap Ports
+        if (e.content?.tool === 'nmap' && e.content.result) {
+            const ports = e.content.result.match(/(\d+)\/tcp\s+open\s+(\S+)/g) || [];
+            ports.forEach(portLine => {
+                const match = portLine.match(/(\d+)\/tcp\s+open\s+(\S+)/);
+                if (match) {
+                    const [, port, service] = match;
+                    const portNodeId = `port_${port}_${e.id.substring(0, 8)}`; // Unique per scan
+
+                    if (!nodesMap.has(portNodeId)) {
+                        nodesMap.set(portNodeId, {
+                            id: portNodeId,
+                            label: `${port}/${service}`,
+                            type: 'port',
+                            eqbsl: { b: 0.95, d: 0.01, u: 0.04, a: 0.5 }
+                        });
+                    }
+
+                    links.push({
+                        source: e.id,
+                        target: portNodeId,
+                        type: 'reveals',
+                        eqbsl: { b: 0.99, d: 0.0, u: 0.01, a: 0.5 }
+                    });
+                }
+            });
+        }
+
+        // 2. WhatWeb Tech
+        if (e.content?.tool === 'whatweb' && e.content.result) {
+            // Extract plugins/tech from whatweb output (simplified parsing)
+            // Example: [ 200 OK ] Apache[2.4.41], Country[UNITED STATES][US], HTTPServer[Ubuntu Linux][Apache/2.4.41]
+            const techMatches = e.content.result.match(/([a-zA-Z0-9_\-]+)\[(.*?)\]/g) || [];
+            techMatches.slice(0, 8).forEach(tm => { // Limit to top 8 to avoid noise
+                const parts = tm.match(/([a-zA-Z0-9_\-]+)\[(.*?)\]/);
+                if (parts) {
+                    const name = parts[1];
+                    // Skip boring ones
+                    if (['Country', 'IP', 'Title', 'HTTPServer'].includes(name)) return;
+
+                    const techId = `tech_${name}_${e.id.substring(0, 8)}`;
+
+                    if (!nodesMap.has(techId)) {
+                        nodesMap.set(techId, {
+                            id: techId,
+                            label: name,
+                            type: 'claim', // Reusing claim color for tech/findings
+                            eqbsl: { b: 0.8, d: 0.1, u: 0.1, a: 0.5 }
+                        });
+                    }
+
+                    links.push({
+                        source: e.id,
+                        target: techId,
+                        type: 'detects',
+                        eqbsl: { b: 0.8, d: 0.1, u: 0.1, a: 0.5 }
+                    });
+                }
+            });
+        }
     });
 
     // Connect evidence that share content similarities
@@ -558,149 +621,493 @@ function generateGraphHtml(nodes, links, data) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shannon World Model - EQBSL Knowledge Graph</title>
+    <title>Shannon EQBSL Knowledge Graph</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; overflow: hidden; }
-        #header { position: fixed; top: 0; left: 0; right: 0; padding: 16px 24px; background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); z-index: 100; display: flex; justify-content: space-between; align-items: center; }
-        #header h1 { font-size: 1.5rem; }
-        #stats { display: flex; gap: 24px; }
-        .stat { padding: 8px 16px; background: rgba(255,255,255,0.1); border-radius: 8px; }
-        .stat-value { font-size: 1.25rem; font-weight: bold; color: #4ecdc4; }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%); 
+            color: #fff; 
+            overflow: hidden; 
+        }
+        
+        /* Header */
+        #header { 
+            position: fixed; top: 0; left: 0; right: 0; 
+            padding: 16px 24px; 
+            background: rgba(15, 15, 26, 0.8); 
+            backdrop-filter: blur(20px); 
+            z-index: 100; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        #header h1 { font-size: 1.4rem; font-weight: 600; }
+        #header h1 span { color: #4ecdc4; }
+        
+        #stats { display: flex; gap: 16px; }
+        .stat { 
+            padding: 8px 16px; 
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px; 
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .stat-value { font-size: 1.2rem; font-weight: 700; color: #4ecdc4; }
+        .stat-label { font-size: 0.8rem; color: rgba(255,255,255,0.6); }
+        
+        /* Graph */
         #graph { width: 100vw; height: 100vh; }
-        #tooltip { position: absolute; background: rgba(0,0,0,0.95); padding: 12px 16px; border-radius: 8px; font-size: 0.875rem; pointer-events: none; opacity: 0; transition: opacity 0.2s; max-width: 350px; border: 1px solid rgba(255,255,255,0.2); }
-        .tensor-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 4px 0; }
-        .tensor-b { background: #4ecdc4; }
-        .tensor-d { background: #ff6b6b; }
-        .tensor-u { background: #ffd93d; }
-        #legend { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.5); padding: 16px; border-radius: 8px; }
-        .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 0.875rem; }
-        .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
-        .legend-line { width: 24px; height: 3px; border-radius: 2px; }
-        #controls { position: fixed; bottom: 20px; left: 20px; display: flex; gap: 8px; flex-wrap: wrap; max-width: 300px; }
-        button { padding: 8px 16px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-        button:hover { background: rgba(255,255,255,0.2); }
-        button.active { background: rgba(78, 205, 196, 0.3); border-color: #4ecdc4; }
+        
+        /* Tooltip */
+        #tooltip { 
+            position: absolute; 
+            background: rgba(15, 15, 26, 0.98); 
+            padding: 16px; 
+            border-radius: 12px; 
+            font-size: 0.85rem; 
+            pointer-events: none; 
+            opacity: 0; 
+            transition: opacity 0.2s; 
+            max-width: 380px; 
+            border: 1px solid rgba(78, 205, 196, 0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .tooltip-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; color: #4ecdc4; }
+        .tooltip-row { display: flex; justify-content: space-between; padding: 4px 0; }
+        .tooltip-label { color: rgba(255,255,255,0.6); }
+        .tooltip-value { font-weight: 500; }
+        
+        /* EQBSL Tensor Bar */
+        .tensor-bar { 
+            display: flex; 
+            height: 12px; 
+            border-radius: 6px; 
+            overflow: hidden; 
+            margin: 8px 0; 
+            background: rgba(255,255,255,0.1);
+        }
+        .tensor-b { background: linear-gradient(90deg, #4ecdc4, #2d9c95); }
+        .tensor-d { background: linear-gradient(90deg, #ff6b6b, #c0392b); }
+        .tensor-u { background: linear-gradient(90deg, #ffd93d, #f1c40f); }
+        
+        .tensor-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: rgba(255,255,255,0.5); }
+        
+        /* EQBSL Info Panel */
+        #eqbsl-panel {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            width: 280px;
+            background: rgba(15, 15, 26, 0.9);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            z-index: 50;
+        }
+        #eqbsl-panel h3 { 
+            font-size: 0.9rem; 
+            font-weight: 600; 
+            margin-bottom: 12px; 
+            color: #4ecdc4;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .eqbsl-formula { 
+            font-family: 'Courier New', monospace; 
+            font-size: 0.8rem;
+            background: rgba(78, 205, 196, 0.1);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 8px 0;
+        }
+        .eqbsl-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            font-size: 0.8rem;
+        }
+        .eqbsl-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        /* Legend */
+        #legend { 
+            position: fixed; 
+            bottom: 20px; 
+            right: 20px; 
+            background: rgba(15, 15, 26, 0.9); 
+            backdrop-filter: blur(20px);
+            padding: 16px; 
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .legend-title { font-weight: 600; font-size: 0.8rem; margin-bottom: 8px; color: rgba(255,255,255,0.6); }
+        .legend-item { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 0.8rem; }
+        .legend-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); }
+        .legend-line { width: 28px; height: 4px; border-radius: 2px; }
+        .legend-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0; }
+        
+        /* Controls */
+        #controls { 
+            position: fixed; 
+            bottom: 20px; 
+            left: 20px; 
+            display: flex; 
+            flex-direction: column;
+            gap: 8px; 
+            max-width: 200px; 
+        }
+        button { 
+            padding: 10px 16px; 
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid rgba(255,255,255,0.15); 
+            color: #fff; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        button:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
+        button.active { background: rgba(78, 205, 196, 0.2); border-color: #4ecdc4; color: #4ecdc4; }
+        
+        .controls-group { font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
     </style>
 </head>
 <body>
     <div id="header">
-        <h1>🌐 Shannon EQBSL Knowledge Graph</h1>
+        <h1>🔮 Shannon <span>EQBSL</span> Knowledge Graph</h1>
         <div id="stats">
-            <div class="stat"><span class="stat-value">${data.evidence?.length || 0}</span> Evidence</div>
-            <div class="stat"><span class="stat-value">${data.claims?.length || 0}</span> Claims</div>
-            <div class="stat"><span class="stat-value">${data.relations?.length || 0}</span> Relations</div>
+            <div class="stat">
+                <span class="stat-value">${nodes.length}</span>
+                <span class="stat-label">Nodes</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value">${links.length}</span>
+                <span class="stat-label">Edges</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value">${data.evidence?.length || 0}</span>
+                <span class="stat-label">Evidence</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value">${data.claims?.length || 0}</span>
+                <span class="stat-label">Claims</span>
+            </div>
         </div>
     </div>
+    
     <svg id="graph"></svg>
     <div id="tooltip"></div>
+    
+    <div id="eqbsl-panel">
+        <h3>📐 EQBSL Tensor</h3>
+        <div class="eqbsl-item">
+            <div class="eqbsl-dot" style="background:#4ecdc4"></div>
+            <strong>b</strong> = Belief (confidence true)
+        </div>
+        <div class="eqbsl-item">
+            <div class="eqbsl-dot" style="background:#ff6b6b"></div>
+            <strong>d</strong> = Disbelief (confidence false)
+        </div>
+        <div class="eqbsl-item">
+            <div class="eqbsl-dot" style="background:#ffd93d"></div>
+            <strong>u</strong> = Uncertainty (lack of evidence)
+        </div>
+        <div class="eqbsl-item">
+            <div class="eqbsl-dot" style="background:#9b59b6"></div>
+            <strong>a</strong> = Base rate (prior)
+        </div>
+        <div class="eqbsl-formula">E = b + a·u</div>
+        <div style="font-size:0.75rem; color:rgba(255,255,255,0.5);">
+            Expectation combines belief with prior-weighted uncertainty
+        </div>
+    </div>
+    
+    
     <div id="legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#4ecdc4"></div> Evidence</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#ff6b6b"></div> Claims</div>
-        <hr style="margin: 8px 0; border-color: rgba(255,255,255,0.2)"/>
-        <div class="legend-item"><div class="legend-line" style="background:#4ecdc4"></div> High Belief (E→1)</div>
-        <div class="legend-item"><div class="legend-line" style="background:#ff6b6b"></div> Low Belief (E→0)</div>
-        <div class="legend-item"><div class="legend-line" style="background:#ffd93d; opacity:0.5"></div> High Uncertainty</div>
+        <div class="legend-title">NODE TYPES</div>
+        <!-- Dynamic Node Types will be inserted here -->
+        <div id="legend-nodes"></div>
+        <div class="legend-divider"></div>
+        <div class="legend-title">EDGE MEANING</div>
+        <div class="legend-item"><div class="legend-line" style="background:#4ecdc4"></div> High Expectation</div>
+        <div class="legend-item"><div class="legend-line" style="background:#ffd93d"></div> Uncertain</div>
+        <div class="legend-item"><div class="legend-line" style="background:#ff6b6b"></div> Low Expectation</div>
     </div>
+    
     <div id="controls">
-        <button onclick="resetZoom()">Reset Zoom</button>
-        <button onclick="toggleForce()">Toggle Force</button>
-        <button id="edgeModeBtn" onclick="cycleEdgeMode()">Edges: Expectation</button>
+        <div class="controls-group">VIEW</div>
+        <button onclick="resetZoom()">⟲ Reset Zoom</button>
+        <button onclick="toggleForce()" id="forceBtn">⏸ Pause Simulation</button>
+        <div class="controls-group" style="margin-top:12px">EDGE STYLE</div>
+        <button id="edgeModeBtn" class="active" onclick="cycleEdgeMode()">Expectation</button>
     </div>
+    
     <script>
         const nodes = ${JSON.stringify(nodes)};
         const links = ${JSON.stringify(links)};
+        
+        // Node type definitions
+        const nodeDefinitions = {
+            'tool': { color: '#4ecdc4', label: 'Tool / Evidence' },
+            'evidence': { color: '#4ecdc4', label: 'Tool / Evidence' },
+            'agent': { color: '#9b59b6', label: 'Agent / Source' },
+            'source': { color: '#9b59b6', label: 'Agent / Source' },
+            'domain': { color: '#3498db', label: 'Domain / Target' },
+            'target': { color: '#3498db', label: 'Domain / Target' },
+            'claim': { color: '#e74c3c', label: 'Claim / Finding' },
+            'eventType': { color: '#f39c12', label: 'Event Type' },
+            'type': { color: '#f39c12', label: 'Event Type' },
+            'port': { color: '#1abc9c', label: 'Port / Service' }
+        };
+
+        // Populate Legend dynamically
+        const presentTypes = new Set(nodes.map(n => n.type));
+        const legendContainer = document.getElementById('legend-nodes');
+        const addedLabels = new Set();
+
+        Object.keys(nodeDefinitions).forEach(type => {
+            if (presentTypes.has(type)) {
+                const def = nodeDefinitions[type];
+                if (!addedLabels.has(def.label)) {
+                    addedLabels.add(def.label);
+                    const div = document.createElement('div');
+                    div.className = 'legend-item';
+                    div.innerHTML = \`<div class="legend-dot" style="background:\${def.color}"></div> \${def.label}\`;
+                    legendContainer.appendChild(div);
+                }
+            }
+        });
+        
+        // Node type to color mapping (derived from definitions)
+        const nodeColors = {};
+        Object.keys(nodeDefinitions).forEach(k => nodeColors[k] = nodeDefinitions[k].color);
+        nodeColors.default = '#95a5a6';
+        
         const width = window.innerWidth, height = window.innerHeight;
         const svg = d3.select('#graph').attr('width', width).attr('height', height);
         const g = svg.append('g');
-        const zoom = d3.zoom().scaleExtent([0.1, 10]).on('zoom', (e) => g.attr('transform', e.transform));
+        
+        // Zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 10])
+            .on('zoom', (e) => g.attr('transform', e.transform));
         svg.call(zoom);
         
-        // Edge color scale based on expectation (E = b + a*u)
-        const edgeColorScale = d3.scaleLinear().domain([0, 0.5, 1]).range(['#ff6b6b', '#ffd93d', '#4ecdc4']);
+        // Edge color scale
+        const edgeColorScale = d3.scaleLinear()
+            .domain([0, 0.5, 1])
+            .range(['#ff6b6b', '#ffd93d', '#4ecdc4']);
         
+        // Force simulation
         const simulation = d3.forceSimulation(nodes)
-            .force('link', d3.forceLink(links).id(d => d.id).distance(80))
-            .force('charge', d3.forceManyBody().strength(-120))
+            .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-200))
             .force('center', d3.forceCenter(width / 2, height / 2))
-            .force('collision', d3.forceCollide().radius(25));
+            .force('collision', d3.forceCollide().radius(30));
         
         // Create edges with EQBSL-based styling
-        const link = g.append('g').selectAll('line').data(links).join('line')
+        const link = g.append('g')
+            .attr('class', 'links')
+            .selectAll('line')
+            .data(links)
+            .join('line')
             .attr('stroke', d => edgeColorScale(d.expectation || 0.5))
-            .attr('stroke-opacity', d => 0.3 + (1 - (d.uncertainty || 0.5)) * 0.7)  // More opaque = less uncertain
-            .attr('stroke-width', d => 1 + (d.expectation || 0.5) * 3);  // Thicker = higher confidence
+            .attr('stroke-opacity', d => 0.3 + (1 - (d.uncertainty || 0.5)) * 0.6)
+            .attr('stroke-width', d => 1.5 + (d.expectation || 0.5) * 3);
         
-        const node = g.append('g').selectAll('circle').data(nodes).join('circle')
-            .attr('r', d => d.type === 'claim' ? 10 : 6)
-            .attr('fill', d => d.type === 'claim' ? '#ff6b6b' : '#4ecdc4')
+        // Create nodes with type-based coloring
+        const node = g.append('g')
+            .attr('class', 'nodes')
+            .selectAll('circle')
+            .data(nodes)
+            .join('circle')
+            .attr('r', d => {
+                if (d.type === 'agent' || d.type === 'source') return 18;
+                if (d.type === 'claim') return 12;
+                if (d.type === 'tool') return 14;
+                return 10;
+            })
+            .attr('fill', d => nodeColors[d.type] || nodeColors.default)
             .attr('stroke', '#fff')
-            .attr('stroke-width', 1.5)
+            .attr('stroke-width', 2)
+            .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))')
             .call(drag(simulation));
+        
+        // Node labels (for larger nodes)
+        const labels = g.append('g')
+            .attr('class', 'labels')
+            .selectAll('text')
+            .data(nodes.filter(n => n.type === 'agent' || n.type === 'source' || n.type === 'tool'))
+            .join('text')
+            .text(d => d.label.substring(0, 12))
+            .attr('font-size', '9px')
+            .attr('fill', '#fff')
+            .attr('text-anchor', 'middle')
+            .attr('dy', 3)
+            .style('pointer-events', 'none')
+            .style('text-shadow', '0 1px 2px rgba(0,0,0,0.8)');
         
         const tooltip = d3.select('#tooltip');
         
-        // Node tooltip with EQBSL tensor visualization
+        // Format tensor bar HTML
+        function tensorBarHtml(eqbsl) {
+            const b = (eqbsl.b * 100).toFixed(1);
+            const d = (eqbsl.d * 100).toFixed(1);
+            const u = (eqbsl.u * 100).toFixed(1);
+            return \`
+                <div class="tensor-bar">
+                    <div class="tensor-b" style="width:\${b}%"></div>
+                    <div class="tensor-d" style="width:\${d}%"></div>
+                    <div class="tensor-u" style="width:\${u}%"></div>
+                </div>
+                <div class="tensor-labels">
+                    <span>b: \${b}%</span>
+                    <span>d: \${d}%</span>
+                    <span>u: \${u}%</span>
+                </div>
+            \`;
+        }
+        
+        // Node tooltip
         node.on('mouseover', (e, d) => {
-            const eqbsl = d.eqbsl || {b:0.33,d:0.33,u:0.34,a:0.5};
-            const tensorHtml = '<div class="tensor-bar"><div class="tensor-b" style="width:'+(eqbsl.b*100)+'%"></div><div class="tensor-d" style="width:'+(eqbsl.d*100)+'%"></div><div class="tensor-u" style="width:'+(eqbsl.u*100)+'%"></div></div><small style="color:#888">B:'+eqbsl.b.toFixed(2)+' D:'+eqbsl.d.toFixed(2)+' U:'+eqbsl.u.toFixed(2)+' a:'+eqbsl.a.toFixed(2)+'</small>';
+            const eqbsl = d.eqbsl || {b:0.33, d:0.33, u:0.34, a:0.5};
+            const expectation = ((eqbsl.b + eqbsl.a * eqbsl.u) * 100).toFixed(1);
+            
             tooltip.style('opacity', 1)
-                .html('<strong>'+d.type.toUpperCase()+'</strong><br/><strong>ID:</strong> '+d.id.substring(0,16)+'<br/><strong>Label:</strong> '+d.label+(d.agent ? '<br/><strong>Agent:</strong> '+d.agent : '')+(d.confidence ? '<br/><strong>Confidence:</strong> '+(d.confidence * 100).toFixed(0)+'%' : '')+'<br/><br/><strong>EQBSL Tensor:</strong>'+tensorHtml)
-                .style('left', (e.pageX + 10) + 'px')
+                .html(\`
+                    <div class="tooltip-title">\${d.type.toUpperCase()}</div>
+                    <div class="tooltip-row">
+                        <span class="tooltip-label">Label</span>
+                        <span class="tooltip-value">\${d.label}</span>
+                    </div>
+                    \${d.agent ? '<div class="tooltip-row"><span class="tooltip-label">Agent</span><span class="tooltip-value">' + d.agent + '</span></div>' : ''}
+                    <div class="tooltip-row">
+                        <span class="tooltip-label">Expectation</span>
+                        <span class="tooltip-value" style="color:#4ecdc4">\${expectation}%</span>
+                    </div>
+                    <div style="margin-top:10px; font-size:0.75rem; color:rgba(255,255,255,0.6)">EQBSL Tensor</div>
+                    \${tensorBarHtml(eqbsl)}
+                \`)
+                .style('left', (e.pageX + 15) + 'px')
                 .style('top', (e.pageY - 10) + 'px');
         }).on('mouseout', () => tooltip.style('opacity', 0));
         
         // Edge tooltip
         link.on('mouseover', (e, d) => {
-            const eqbsl = d.eqbsl || {b:0.5,d:0.2,u:0.3,a:0.5};
-            const tensorHtml = '<div class="tensor-bar"><div class="tensor-b" style="width:'+(eqbsl.b*100)+'%"></div><div class="tensor-d" style="width:'+(eqbsl.d*100)+'%"></div><div class="tensor-u" style="width:'+(eqbsl.u*100)+'%"></div></div>';
+            const eqbsl = d.eqbsl || {b:0.5, d:0.2, u:0.3, a:0.5};
             tooltip.style('opacity', 1)
-                .html('<strong>RELATION: '+d.type+'</strong><br/>E(xpectation): '+(d.expectation*100).toFixed(0)+'%<br/>Uncertainty: '+(d.uncertainty*100).toFixed(0)+'%'+tensorHtml)
-                .style('left', (e.pageX + 10) + 'px')
+                .html(\`
+                    <div class="tooltip-title">RELATION: \${d.type}</div>
+                    <div class="tooltip-row">
+                        <span class="tooltip-label">Expectation</span>
+                        <span class="tooltip-value" style="color:#4ecdc4">\${((d.expectation || 0.5) * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="tooltip-row">
+                        <span class="tooltip-label">Uncertainty</span>
+                        <span class="tooltip-value" style="color:#ffd93d">\${((d.uncertainty || 0.5) * 100).toFixed(1)}%</span>
+                    </div>
+                    <div style="margin-top:10px; font-size:0.75rem; color:rgba(255,255,255,0.6)">EQBSL Tensor</div>
+                    \${tensorBarHtml(eqbsl)}
+                \`)
+                .style('left', (e.pageX + 15) + 'px')
                 .style('top', (e.pageY - 10) + 'px');
         }).on('mouseout', () => tooltip.style('opacity', 0));
         
+        // Simulation tick
         simulation.on('tick', () => {
-            link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
-                .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
-            node.attr('cx', d => d.x).attr('cy', d => d.y);
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+            
+            node
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+            
+            labels
+                .attr('x', d => d.x)
+                .attr('y', d => d.y);
         });
         
+        // Drag behavior
         function drag(simulation) {
             return d3.drag()
-                .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+                .on('start', (e, d) => {
+                    if (!e.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x; d.fy = d.y;
+                })
                 .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
-                .on('end', (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; });
+                .on('end', (e, d) => {
+                    if (!e.active) simulation.alphaTarget(0);
+                    d.fx = null; d.fy = null;
+                });
         }
         
+        // Controls
         let isRunning = true;
-        function toggleForce() { isRunning = !isRunning; if (isRunning) simulation.restart(); else simulation.stop(); }
-        function resetZoom() { svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity); }
+        function toggleForce() {
+            isRunning = !isRunning;
+            document.getElementById('forceBtn').textContent = isRunning ? '⏸ Pause Simulation' : '▶ Resume Simulation';
+            if (isRunning) simulation.restart();
+            else simulation.stop();
+        }
         
-        // Cycle edge visualization mode
-        const edgeModes = ['expectation', 'uncertainty', 'controversy'];
+        function resetZoom() {
+            svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
+        }
+        
+        // Edge mode cycling
+        const edgeModes = ['Expectation', 'Uncertainty', 'Controversy'];
         let edgeModeIdx = 0;
+        
         function cycleEdgeMode() {
             edgeModeIdx = (edgeModeIdx + 1) % edgeModes.length;
             const mode = edgeModes[edgeModeIdx];
-            document.getElementById('edgeModeBtn').textContent = 'Edges: ' + mode.charAt(0).toUpperCase() + mode.slice(1);
+            const btn = document.getElementById('edgeModeBtn');
+            btn.textContent = mode;
             
-            link.transition().duration(300)
+            link.transition().duration(400)
                 .attr('stroke', d => {
-                    if (mode === 'expectation') return edgeColorScale(d.expectation || 0.5);
-                    if (mode === 'uncertainty') return d3.interpolateYlOrRd(d.uncertainty || 0.5);
-                    if (mode === 'controversy') return d3.interpolatePurples(0.3 + d.controversy * 3);
+                    if (mode === 'Expectation') return edgeColorScale(d.expectation || 0.5);
+                    if (mode === 'Uncertainty') return d3.interpolateYlOrRd(d.uncertainty || 0.5);
+                    if (mode === 'Controversy') return d3.interpolatePurples(0.3 + (d.controversy || 0) * 5);
                     return '#555';
                 })
                 .attr('stroke-width', d => {
-                    if (mode === 'expectation') return 1 + (d.expectation || 0.5) * 3;
-                    if (mode === 'uncertainty') return 1 + (d.uncertainty || 0.5) * 4;
-                    if (mode === 'controversy') return 1 + d.controversy * 10;
+                    if (mode === 'Expectation') return 1.5 + (d.expectation || 0.5) * 3;
+                    if (mode === 'Uncertainty') return 1.5 + (d.uncertainty || 0.5) * 4;
+                    if (mode === 'Controversy') return 1.5 + (d.controversy || 0) * 12;
                     return 2;
                 });
         }
+        
+        // Initial zoom to fit
+        setTimeout(() => {
+            const bounds = g.node().getBBox();
+            const dx = bounds.width, dy = bounds.height;
+            const x = bounds.x + dx / 2, y = bounds.y + dy / 2;
+            const scale = 0.8 / Math.max(dx / width, dy / height);
+            const translate = [width / 2 - scale * x, height / 2 - scale * y];
+            svg.transition().duration(1000)
+                .call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+        }, 2000);
     </script>
 </body>
 </html>`;
 }
+
