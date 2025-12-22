@@ -4,6 +4,46 @@ This document tracks significant modifications made to the Shannon codebase.
 
 ---
 
+## LLM Configuration Documentation (2025-12-22)
+
+### Overview
+Added comprehensive LLM provider setup instructions to the main README to help users configure Shannon with various LLM providers (cloud, local, and custom endpoints).
+
+### Modified Files
+- `README.md` — Added "LLM Provider Setup" section with detailed instructions
+
+### Changes Made
+
+#### README.md Updates
+1. **Added LLM Provider Setup section** after Quick Start
+   - Cloud providers: GitHub Models, OpenAI, Anthropic
+   - Local providers: Ollama, llama.cpp, LM Studio
+   - Custom endpoint configuration
+   - Advanced configuration options
+
+2. **Updated Quick Start section**
+   - Added step to copy and edit .env file
+   - Added warning note about LLM requirement
+   - Added link to LLM Provider Setup section
+
+### Content Added
+- **7 provider configurations** with setup instructions
+- **API key sources** with direct links
+- **Cost information** for each provider
+- **Default endpoints** for local providers
+- **Custom endpoint examples** for Azure, proxies, self-hosted servers
+- **Advanced configuration** for task-specific models
+
+### Rationale
+The README previously jumped directly to running commands without mentioning that Shannon requires LLM configuration. This left new users confused about missing API keys. The new section:
+- Appears early in the README for visibility
+- Covers all supported providers documented in .env.example
+- Provides clear, copy-paste examples
+- Links to relevant external resources
+- Maintains consistency with docs/gitbook/ documentation
+
+---
+
 ## Security Analyzers for WSTG Coverage (2025-12-22)
 
 ### Overview
