@@ -330,8 +330,34 @@ export class Orchestrator extends EventEmitter {
             }
         }
 
-        // Derive target model from imported evidence
+        // Directly populate endpoints from evidence (for imported world models)
+        // This handles evidence with type 'endpoint' that won't be found by deriveFromEvidence
+        if (worldModelData.evidence) {
+            for (const ev of worldModelData.evidence) {
+                if (ev.content?.type === 'endpoint' && ev.content?.path) {
+                    const method = ev.content.method || 'GET';
+                    const path = ev.content.path;
+                    const endpointId = `endpoint:${method}:${path}`;
+
+                    this.targetModel.addEntity({
+                        id: endpointId,
+                        entity_type: 'endpoint',
+                        attributes: {
+                            method,
+                            path,
+                            params: ev.content.params || [],
+                            source: ev.content.source,
+                            evidence_refs: [ev.id],
+                        },
+                        claim_refs: [],
+                    });
+                }
+            }
+        }
+
+        // Derive additional target model relationships from imported evidence
         this.targetModel.deriveFromEvidence(this.evidenceGraph, this.ledger);
+
 
         // Run synthesis agents
         const synthesisAgents = [

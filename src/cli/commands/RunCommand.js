@@ -47,7 +47,7 @@ export async function runCommand(target, options) {
         console.log(chalk.gray(`Target: ${target}`));
         console.log(chalk.gray(`Mode: ${options.mode}`));
         console.log(chalk.gray(`Workspace: ${workspace}`));
-        
+
         // Budget profile will be used to configure different limit presets
         if (options.budgetProfile) {
             console.log(chalk.gray(`Profile: ${options.budgetProfile} (budget presets coming soon)`));
@@ -89,7 +89,7 @@ export async function runCommand(target, options) {
                 budget.check();
 
                 repoPath = await generateLocalSource(target, workspace); // Use workspace as base for repos
-                
+
                 // Track the network requests made during generation
                 budget.track('networkRequests', 5); // Approximate count for recon tools
             } catch (e) {
@@ -145,11 +145,11 @@ async function executePipeline(webUrl, sourceDir, session, distributedConfig, to
     if (AGENTS['pre-recon'].order >= nextAgent.order) {
         // Evidence collection hook
         await executePreReconPhase(webUrl, sourceDir, variables, distributedConfig, toolAvailability, pipelineTestingMode, session.id);
-        
+
         // Add phase completion to world model
         worldModel.addEvidence({ type: 'phase_complete', phase: 'pre-recon' }, 'pre-recon');
         budget.track('toolInvocations', 1);
-        
+
         await updateSessionWithProgress(session, 'pre-recon');
     }
 
@@ -158,10 +158,12 @@ async function executePipeline(webUrl, sourceDir, session, distributedConfig, to
 
     if (nextAgent.order <= 2) {
         // Recon
-        await runClaudePromptWithRetry(await loadPrompt('recon', variables, distributedConfig, pipelineTestingMode), sourceDir, '*', '', 'Recon', 'recon', chalk.cyan, { id: session.id });
+        // Pass full session object (not just {id}) so AuditSession can access webUrl
+        await runClaudePromptWithRetry(await loadPrompt('recon', variables, distributedConfig, pipelineTestingMode), sourceDir, '*', '', 'Recon', 'recon', chalk.cyan, session);
         budget.track('toolInvocations', 1);
         await updateSessionWithProgress(session, 'recon');
     }
+
 
     if (nextAgent.order <= 7 && nextAgent.order >= 3) {
         await runPhase('vulnerability-analysis', session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt);
