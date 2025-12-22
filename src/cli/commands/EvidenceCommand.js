@@ -1,15 +1,10 @@
 
 import chalk from 'chalk';
 import { fs, path } from 'zx';
-import { WorldModel } from '../../core/WorldModel.js';
 
 export async function evidenceCommand(action, workspace, options) {
-    const wmPath = path.join(workspace, 'evidence.jsonl');
-
-    // In a real implementation this would load from JSONL.
-    // For now we assume the standard export format from WorldModel.toJSON()
-    // which is a single JSON object in evidence.jsonl (historically named, actually JSON)
-    // or we can implement true JSONL streaming loader.
+    // Load world model from the standard location
+    // The world model is exported as `world-model.json` by WorldModel.export()
 
     if (!await fs.pathExists(workspace)) {
         console.error(chalk.red(`Workspace not found: ${workspace}`));
@@ -18,8 +13,7 @@ export async function evidenceCommand(action, workspace, options) {
 
     console.log(chalk.blue(`Loading Evidence Graph from ${workspace}...`));
 
-    // Lazy load mock for now as we don't have the full persistence layer hooked up in RunCommand yet
-    // In production this would read `world-model.json`
+    // Load the world model from the standard export format
     const worldModelFile = path.join(workspace, 'world-model.json');
     let data = { evidence: [], claims: [], artifacts: [] };
 

@@ -73,7 +73,7 @@ describe('WorldModel', () => {
     describe('addClaim', () => {
         it('should add a claim with confidence', () => {
             const evId = model.addEvidence({ data: 'test' }, 'Recon');
-            const claimId = model.addClaim('/api/login', 'isVulnerable', 'SQLi', 0.85, [evId]);
+            model.addClaim('/api/login', 'isVulnerable', 'SQLi', 0.85, [evId]);
 
             const json = model.toJSON();
             assert.strictEqual(json.claims.length, 1);
@@ -155,7 +155,7 @@ describe('WorldModel', () => {
 
     describe('addArtifact', () => {
         it('should register an artifact', () => {
-            const id = model.addArtifact('reports/final.md', 'report', { format: 'markdown' });
+            model.addArtifact('reports/final.md', 'report', { format: 'markdown' });
             const json = model.toJSON();
 
             assert.strictEqual(json.artifacts.length, 1);

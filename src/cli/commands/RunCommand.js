@@ -1,27 +1,24 @@
 
 import chalk from 'chalk';
 import { path, fs } from 'zx';
-import { Timer } from '../../utils/metrics.js';
 import { displaySplashScreen } from '../ui.js';
-import { createSession, updateSession, getNextAgent, AGENTS } from '../../session-manager.js';
+import { createSession, getNextAgent, AGENTS } from '../../session-manager.js';
 import { setupLocalRepo } from '../../setup/environment.js';
 import { checkToolAvailability, handleMissingTools } from '../../tool-checker.js';
 import { generateLocalSource } from '../../../local-source-generator.mjs';
 import { WorldModel } from '../../core/WorldModel.js';
 import { BudgetManager } from '../../core/BudgetManager.js';
 import { EpistemicLedger } from '../../core/EpistemicLedger.js';
-import { generateAuditPath } from '../../audit/utils.js';
 
 // Import orchestration logic (preserving existing imports)
-import { runPhase, getGitCommitHash } from '../../checkpoint-manager.js';
+import { runPhase } from '../../checkpoint-manager.js';
 import { runClaudePromptWithRetry } from '../../ai/claude-executor.js';
 import { loadPrompt } from '../../prompts/prompt-manager.js';
 import { executePreReconPhase } from '../../phases/pre-recon.js';
 import { assembleFinalReport } from '../../phases/reporting.js';
-import { displayTimingSummary, timingResults, costResults } from '../../utils/metrics.js';
-import { formatDuration } from '../../audit/utils.js';
-import { PentestError, logError } from '../../error-handling.js';
+import { logError } from '../../error-handling.js';
 import { parseConfig, distributeConfig } from '../../config-parser.js';
+
 
 export async function runCommand(target, options) {
     // 1. Initialize Budgets
@@ -39,7 +36,8 @@ export async function runCommand(target, options) {
     const worldModel = new WorldModel(workspace);
     await worldModel.init();
 
-    const ledger = new EpistemicLedger();
+    // Note: EpistemicLedger will be integrated in future phases for uncertainty tracking
+    // const ledger = new EpistemicLedger();
 
     // 3. Display Info
     if (!global.SHANNON_QUIET) {
@@ -48,7 +46,11 @@ export async function runCommand(target, options) {
         console.log(chalk.gray(`Target: ${target}`));
         console.log(chalk.gray(`Mode: ${options.mode}`));
         console.log(chalk.gray(`Workspace: ${workspace}`));
-        if (options.budgetProfile) console.log(chalk.gray(`Profile: ${options.budgetProfile}`));
+        
+        // Budget profile will be used to configure different limit presets
+        if (options.budgetProfile) {
+            console.log(chalk.gray(`Profile: ${options.budgetProfile} (budget presets coming soon)`));
+        }
     }
 
     // 4. Handle DRY RUN
@@ -76,16 +78,19 @@ export async function runCommand(target, options) {
         }
 
         // Repo/Blackbox Setup
-        let repoPath = options.repoPath; // If passed explicitly
+        let repoPath = options.repoPath; // If passed explicitly via --repo-path
         let isBlackbox = !repoPath;
 
         if (isBlackbox) {
             console.log(chalk.magenta('🕵️  Black-box mode: Generating local source...'));
             try {
                 // Check budget before expensive operation
-                budget.track('networkRequests', 0); // Just a check
+                budget.check();
 
                 repoPath = await generateLocalSource(target, workspace); // Use workspace as base for repos
+                
+                // Track the network requests made during generation
+                budget.track('networkRequests', 5); // Approximate count for recon tools
             } catch (e) {
                 console.error(chalk.red(`Failed to generate local source: ${e.message}`));
                 process.exit(1);
@@ -101,18 +106,14 @@ export async function runCommand(target, options) {
         const session = await createSession(target, repoPath, options.config, sourceDir);
 
         // EXECUTION LOOP
-        // Pass worldModel, budget, ledger to the phase runners
+        // Pass worldModel and budget to the phase runners
         // (Note: This requires updating the phase runners to accept these new objects, 
         //  but for now we wrap existing logic and inject where we can).
-
-        // ... [Logic from old main() follows] ...
-        // For brevity in this artifact, I am calling the existing orchestration 
-        // but identifying where the new objects would hook in.
 
         // Re-using the exact logic from old main() to ensure stability
         // but mapping the options correctly.
 
-        await executePipeline(target, sourceDir, session, distributedConfig, toolAvailability, options, worldModel);
+        await executePipeline(target, sourceDir, session, distributedConfig, toolAvailability, options, worldModel, workspace, budget);
 
     } catch (error) {
         if (error.name === 'BudgetExceededError') {
@@ -126,7 +127,7 @@ export async function runCommand(target, options) {
 }
 
 // Extracted Pipeline Logic
-async function executePipeline(webUrl, sourceDir, session, distributedConfig, toolAvailability, options, worldModel) {
+async function executePipeline(webUrl, sourceDir, session, distributedConfig, toolAvailability, options, worldModel, workspace, budget) {
     const pipelineTestingMode = options.pipelineTesting;
     const variables = { webUrl, repoPath: sourceDir, sourceDir }; // Fix repoPath mapping
 
@@ -141,40 +142,45 @@ async function executePipeline(webUrl, sourceDir, session, distributedConfig, to
 
     // Phase 1: Pre-Recon
     if (AGENTS['pre-recon'].order >= nextAgent.order) {
-        // Evidence collection hook would go here
-        const { duration } = await executePreReconPhase(webUrl, sourceDir, variables, distributedConfig, toolAvailability, pipelineTestingMode, session.id);
-        // Example: worldModel.addEvidence({ type: 'phase_complete', phase: 'pre-recon' }, 'pre-recon');
+        // Evidence collection hook
+        await executePreReconPhase(webUrl, sourceDir, variables, distributedConfig, toolAvailability, pipelineTestingMode, session.id);
+        
+        // Add phase completion to world model
+        worldModel.addEvidence({ type: 'phase_complete', phase: 'pre-recon' }, 'pre-recon');
+        budget.track('toolInvocations', 1);
+        
         await updateSessionWithProgress(session, 'pre-recon');
     }
 
-    // ... (Repeat for other phases using existing logic)
-    // For this refactor, I am keeping the structure compatible with the existing `checkpoint-manager.js`
-
     // Quick hack to chain the rest of the phases since they are monolithic in the old file
-    // In a full refactor, `runPhase` should take the worldModel.
+    // In a full refactor, `runPhase` should take the worldModel and budget.
 
     if (nextAgent.order <= 2) {
         // Recon
         await runClaudePromptWithRetry(await loadPrompt('recon', variables, distributedConfig, pipelineTestingMode), sourceDir, '*', '', 'Recon', 'recon', chalk.cyan, { id: session.id });
+        budget.track('toolInvocations', 1);
         await updateSessionWithProgress(session, 'recon');
     }
 
     if (nextAgent.order <= 7 && nextAgent.order >= 3) {
         await runPhase('vulnerability-analysis', session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt);
+        budget.track('toolInvocations', 1);
     }
 
     if (nextAgent.order <= 12 && nextAgent.order >= 8) {
         await runPhase('exploitation', session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt);
+        budget.track('toolInvocations', 1);
     }
 
     if (nextAgent.order <= 13) {
         await assembleFinalReport(sourceDir);
         await runClaudePromptWithRetry(await loadPrompt('report-executive', variables, distributedConfig, pipelineTestingMode), sourceDir, '*', '', 'Report', 'report', chalk.cyan, { id: session.id });
+        budget.track('toolInvocations', 1);
         await updateSessionWithProgress(session, 'report');
     }
 
-    // Save World Model at end
-    await worldModel.export(path.join(workspace, 'evidence.jsonl'));
+    // Save World Model at end (using correct filename)
+    await worldModel.export(path.join(workspace, 'world-model.json'));
 }
 
 async function updateSessionWithProgress(session, agentName) {
