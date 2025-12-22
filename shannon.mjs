@@ -32,9 +32,10 @@ program
   .argument('<target>', 'Target URL')
   .option('--mode <mode>', 'Execution mode: live, replay, dry-run', 'live')
   .option('--workspace <dir>', 'Directory for artifacts and evidence')
+  .option('--repo-path <path>', 'Path to existing repository (skips black-box recon)')
   .option('--evidence-in <file>', 'Input evidence file for replay')
   .option('--evidence-out <file>', 'Output evidence file')
-  .option('--profile <profile>', 'Execution profile (ci, recon-only, full)', 'full')
+  .option('--profile <profile>', 'Budget profile: ci, recon-only, full (future feature)', 'full')
   .option('--config <file>', 'Path to configuration file')
   // Budget Options
   .option('--max-time-ms <ms>', 'Max execution time in ms', parseInt)
@@ -50,10 +51,13 @@ program
   });
 
 // EVIDENCE COMMAND
-program
+const evidenceCmd = program
   .command('evidence')
-  .description('Manage and query the Evidence Graph')
+  .description('Manage and query the Evidence Graph');
+
+evidenceCmd
   .command('stats')
+  .description('Show statistics for the evidence graph')
   .argument('<workspace>', 'Workspace directory')
   .action(async (workspace) => {
     await evidenceCommand('stats', workspace);

@@ -8,15 +8,25 @@ export class BudgetExceededError extends Error {
 }
 
 /**
+ * Helper function to provide default values
+ * @param {*} val - Value to check
+ * @param {*} def - Default value if val is undefined
+ * @returns {*} val if defined, otherwise def
+ */
+function defaultTo(val, def) {
+    return val !== undefined ? val : def;
+}
+
+/**
  * BudgetManager - Enforces resource limits for the session.
  */
 export class BudgetManager {
     constructor(limits = {}) {
         this.limits = {
-            maxTimeMs: inputs(limits.maxTimeMs, 0),         // 0 = unlimited
-            maxTokens: inputs(limits.maxTokens, 0),
-            maxNetworkRequests: inputs(limits.maxNetworkRequests, 0),
-            maxToolInvocations: inputs(limits.maxToolInvocations, 0),
+            maxTimeMs: defaultTo(limits.maxTimeMs, 0),         // 0 = unlimited
+            maxTokens: defaultTo(limits.maxTokens, 0),
+            maxNetworkRequests: defaultTo(limits.maxNetworkRequests, 0),
+            maxToolInvocations: defaultTo(limits.maxToolInvocations, 0),
         };
 
         this.usage = {
@@ -51,6 +61,13 @@ export class BudgetManager {
     }
 
     getRemaining() {
+        // Simple mapping for limit keys to usage keys
+        const limitToUsageMap = {
+            maxTokens: 'tokens',
+            maxNetworkRequests: 'networkRequests',
+            maxToolInvocations: 'toolInvocations'
+        };
+
         const remaining = {};
         for (const [limitKey, limitVal] of Object.entries(this.limits)) {
             if (limitVal === 0) {
@@ -62,15 +79,9 @@ export class BudgetManager {
                 const elapsed = Date.now() - this.usage.startTime;
                 remaining[limitKey] = Math.max(0, limitVal - elapsed);
             } else {
-                const usageKey = limitKey.replace('max', '').replace(/^[A-Z]/, c => c.toLowerCase()); // e.g. MaxTokens -> tokens
-                // Simple mapping fix: 
-                // maxTokens -> tokens
-                // maxNetworkRequests -> networkRequests
-                // maxToolInvocations -> toolInvocations
-                const actualUsageKey = usageKey.charAt(0).toLowerCase() + usageKey.slice(1);
-
-                if (this.usage[actualUsageKey] !== undefined) {
-                    remaining[limitKey] = Math.max(0, limitVal - this.usage[actualUsageKey]);
+                const usageKey = limitToUsageMap[limitKey];
+                if (usageKey && this.usage[usageKey] !== undefined) {
+                    remaining[limitKey] = Math.max(0, limitVal - this.usage[usageKey]);
                 }
             }
         }
@@ -93,8 +104,4 @@ export class BudgetManager {
             throw new BudgetExceededError(usageKey, limit, current);
         }
     }
-}
-
-function inputs(val, def) {
-    return val !== undefined ? val : def;
 }
