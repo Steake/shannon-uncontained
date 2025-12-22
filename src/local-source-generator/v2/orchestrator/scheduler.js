@@ -295,6 +295,101 @@ export class Orchestrator extends EventEmitter {
     }
 
     /**
+     * Run only synthesis stage with imported world model
+     * Used when recon is done externally (e.g., by v1 pipeline)
+     * 
+     * @param {object} worldModelData - Imported world model JSON
+     * @param {string} outputDir - Output directory for generated files
+     * @param {object} options - Synthesis options
+     * @returns {Promise<object>} Synthesis result
+     */
+    async runSynthesis(worldModelData, outputDir, options = {}) {
+        this.emit('synthesis:start', { outputDir });
+
+        // Import existing world model data
+        if (worldModelData.evidence) {
+            for (const ev of worldModelData.evidence) {
+                this.evidenceGraph.addEvent({
+                    id: ev.id,
+                    type: ev.content?.type || 'observation',
+                    payload: ev.content,
+                    source_agent: ev.sourceAgent,
+                    timestamp: ev.timestamp,
+                });
+            }
+        }
+
+        if (worldModelData.claims) {
+            for (const claim of worldModelData.claims) {
+                this.ledger.registerClaim(
+                    claim.subject,
+                    claim.predicate,
+                    { confidence: claim.confidence, eqbsl: claim.eqbsl }
+                );
+            }
+        }
+
+        // Derive target model from imported evidence
+        this.targetModel.deriveFromEvidence(this.evidenceGraph, this.ledger);
+
+        // Run synthesis agents
+        const synthesisAgents = [
+            'SourceGenAgent',
+            'SchemaGenAgent',
+            'TestGenAgent',
+            'DocumentationAgent',
+        ];
+
+        const results = {};
+        const errors = [];
+
+        for (const agentName of synthesisAgents) {
+            if (this.aborted) break;
+
+            const agent = this.registry.get(agentName);
+            if (!agent) {
+                this.emit('synthesis:agent-skip', { agent: agentName, reason: 'not registered' });
+                continue;
+            }
+
+            try {
+                const ctx = this.createContext(agent.default_budget);
+                const target = worldModelData.meta?.target || 'unknown';
+
+                const result = await agent.execute(ctx, {
+                    target,
+                    outputDir,
+                    framework: options.framework,
+                });
+
+                results[agentName] = result;
+
+                if (!result.success) {
+                    errors.push({ agent: agentName, error: result.error });
+                }
+
+                this.emit('synthesis:agent-complete', { agent: agentName, success: result.success });
+            } catch (err) {
+                errors.push({ agent: agentName, error: err.message });
+                this.emit('synthesis:agent-error', { agent: agentName, error: err.message });
+            }
+        }
+
+        const success = errors.length === 0;
+        this.emit('synthesis:complete', { success, results, errors });
+
+        return {
+            success,
+            results,
+            errors,
+            files_generated: Object.values(results)
+                .filter(r => r.success)
+                .flatMap(r => r.files || []),
+            manifest: this.manifest.export(),
+        };
+    }
+
+    /**
      * Abort pipeline execution
      */
     abort() {

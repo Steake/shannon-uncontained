@@ -111,18 +111,23 @@ program
   .option('--skip-nmap', 'Skip nmap port scan')
   .option('--skip-crawl', 'Skip active crawling')
   .option('--timeout <ms>', 'Global timeout for tools in ms', parseInt)
+  .option('--no-ai', 'Skip AI-powered code synthesis (recon only)')
+  .option('--framework <name>', 'Target framework for synthesis (express, fastapi)', 'express')
   .action(async (target, options) => {
     const { generateLocalSource } = await import('./local-source-generator.mjs');
 
     console.log(chalk.cyan.bold('🔍 LOCAL SOURCE GENERATOR'));
     console.log(chalk.gray(`Target: ${target}`));
     console.log(chalk.gray(`Output: ${options.output}`));
+    console.log(chalk.gray(`AI Synthesis: ${options.ai !== false ? 'enabled' : 'disabled'}`));
 
     try {
       const result = await generateLocalSource(target, options.output, {
         skipNmap: options.skipNmap,
         skipCrawl: options.skipCrawl,
-        timeout: options.timeout
+        timeout: options.timeout,
+        enableAI: options.ai !== false,
+        framework: options.framework,
       });
       console.log(chalk.green(`\n✅ Local source generated at: ${result}`));
     } catch (error) {

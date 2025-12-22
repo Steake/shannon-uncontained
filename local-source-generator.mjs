@@ -206,8 +206,58 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
     console.log(chalk.green(`  ✅ World Model saved with EQBSL tensors: ${worldModelPath}`));
     console.log(chalk.gray(`     Evidence: ${worldModel.evidence.size}, Claims: ${worldModel.claims.size}`));
 
+    // === AI SYNTHESIS PHASE ===
+    if (options.enableAI !== false) {
+        console.log(chalk.magenta('\n🤖 AI SYNTHESIS PHASE'));
+
+        try {
+            // Import v2 Orchestrator and agents
+            const { createLSGv2 } = await import('./src/local-source-generator/v2/index.js');
+            const { getLLMClient } = await import('./src/local-source-generator/v2/orchestrator/llm-client.js');
+
+            // Check if LLM is available
+            const llm = getLLMClient();
+
+            if (!llm.apiKey && !process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GITHUB_TOKEN) {
+                console.log(chalk.yellow('  ⚠️ No LLM API key configured - skipping AI synthesis'));
+                console.log(chalk.gray('     Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GITHUB_TOKEN to enable'));
+            } else {
+                console.log(chalk.gray(`  Framework: ${options.framework || 'express'}`));
+
+                // Create orchestrator with synthesis agents
+                const orchestrator = createLSGv2({ mode: 'live' });
+
+                // Load world model JSON
+                const worldModelData = worldModel.toJSON();
+                worldModelData.meta = { target: webUrl };
+
+                // Run synthesis
+                console.log(chalk.blue('  🔧 Running synthesis agents...'));
+                const synthesisResult = await orchestrator.runSynthesis(
+                    worldModelData,
+                    sourceDir,
+                    { framework: options.framework || 'express' }
+                );
+
+                if (synthesisResult.success) {
+                    console.log(chalk.green(`  ✅ AI synthesis complete`));
+                    console.log(chalk.gray(`     Files generated: ${synthesisResult.files_generated?.length || 0}`));
+                } else {
+                    console.log(chalk.yellow('  ⚠️ Some synthesis agents failed:'));
+                    for (const err of synthesisResult.errors || []) {
+                        console.log(chalk.gray(`     - ${err.agent}: ${err.error}`));
+                    }
+                }
+            }
+        } catch (synthError) {
+            console.log(chalk.yellow(`  ⚠️ AI synthesis skipped: ${synthError.message}`));
+            // Don't fail the whole generation for synthesis errors
+        }
+    }
+
     console.log(chalk.green(`\n✅ Synthetic source generated at: ${sourceDir}`));
     return sourceDir;
+
 }
 
 // Wrapper for nmap with resilience
