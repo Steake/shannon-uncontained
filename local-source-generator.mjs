@@ -53,6 +53,22 @@ const TOOL_TIMEOUTS = {
 export async function generateLocalSource(webUrl, outputDir, options = {}) {
     console.log(chalk.yellow.bold('\n🔍 LOCAL SOURCE GENERATOR'));
 
+    // Extract CLI skip options
+    const {
+        skipRecon = false,
+        skipScreenshots = false,
+        skipTools = false,
+    } = options;
+
+    if (skipRecon || skipScreenshots || skipTools) {
+        const optsSummary = [
+            skipRecon && 'skipRecon',
+            skipScreenshots && 'skipScreenshots',
+            skipTools && 'skipTools',
+        ].filter(Boolean).join(', ');
+        console.log(chalk.gray(`  (Options) ${optsSummary}`));
+    }
+
     // Validate URL
     let parsedUrl;
     try {
@@ -81,16 +97,18 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
     console.log(chalk.cyan(`  📊 Budget: ${(budget.limits.maxTimeMs / 60000).toFixed(1)}min timeout, ${budget.limits.maxToolInvocations} max tools`));
 
     // Check tool availability
-    const requiredTools = ['nmap', 'subfinder', 'whatweb', 'gau', 'katana'];
+    const requiredTools = skipTools ? [] : ['nmap', 'subfinder', 'whatweb', 'gau', 'katana'];
     const toolStatus = await checkToolsAvailability(requiredTools);
 
     const availableTools = Object.entries(toolStatus).filter(([_, available]) => available).map(([name]) => name);
     const missingTools = Object.entries(toolStatus).filter(([_, available]) => !available).map(([name]) => name);
 
-    if (missingTools.length > 0) {
+    if (missingTools.length > 0 && !skipTools) {
         console.log(chalk.yellow(`  ⚠️  Missing tools (will skip): ${missingTools.join(', ')}`));
     }
-    console.log(chalk.blue(`  🔧 Available tools: ${availableTools.join(', ') || 'none'}`));
+    if (!skipTools) {
+        console.log(chalk.blue(`  🔧 Available tools: ${availableTools.join(', ') || 'none'}`));
+    }
 
     // Initialize Progress Bar
     const bar = new cliProgress.SingleBar({
