@@ -300,6 +300,16 @@ AGPL-3.0. Because if you're going to use epistemic tools, you should share your 
 
 ---
 
+## Fork Acknowledgment
+
+Shannon-Uncontained is a fork of [**Shannon**](https://github.com/KeygraphHQ/shannon) by [Keygraph, Inc.](https://keygraph.io/)
+
+We gratefully acknowledge the original authors for building the foundation upon which this epistemic extension stands. The original Shannon project provided the pentest orchestration architecture; we have extended it with EQBSL-based uncertainty quantification, knowledge graph visualization, and a rather more skeptical worldview.
+
+If you find value in the epistemic additions, consider also starring the [upstream repository](https://github.com/KeygraphHQ/shannon).
+
+---
+
 <p align="center">
   <i>"That which can be measured should be measured with uncertainty."</i>
 </p>
