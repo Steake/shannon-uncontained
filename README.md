@@ -1,523 +1,305 @@
-> [!NOTE]
-> **This is Shannon Uncontained — a fork of [KeygraphHQ/shannon](https://github.com/KeygraphHQ/shannon).**
-> See [Fork Philosophy](#-fork-philosophy) for why this exists and how it differs.
+# 🔮 Shannon-Uncontained
 
+**_Epistemic reconnaissance for those who refuse to be confined by their own assumptions_**
 
-<div align="center">
+[![Node](https://img.shields.io/badge/node-18%2B-green.svg)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/status-alpha-orange.svg)](https://github.com/Steake/shannon-uncontained)
 
-# Shannon Uncontained
-
-### *The AI Pentester, Liberated from Its Container*
-
-Shannon's purpose is refreshingly simple: break your web application before someone with less noble intentions does it for you. Consider it the Red Team to your vibe-coding Blue Team, the skeptic in a room full of optimists, the one asking "but have you actually *tried* to exploit this?" while everyone else admires the architecture.
-
----
-
-[Original Project](https://github.com/KeygraphHQ/shannon) • [Discord](https://discord.gg/KAqzSHHpRt)
+> _"What can be asserted without evidence can be dismissed without evidence."_
+> — Christopher Hitchens
+>
+> _"What can be asserted WITH evidence must still account for its uncertainty."_
+> — The EQBSL Ledger
 
 ---
 
-</div>
+## What Is This, Exactly?
 
-## 🍴 Fork Philosophy
+Shannon-Uncontained is a **penetration testing orchestration framework** that treats security reconnaissance not as a checklist of tools, but as an exercise in **epistemic systems design**. We refuse to contain our observations in the stale categories of "finding" or "non-finding." Reality, as Hitchens might have noted, does not respect such convenient binaries.
 
-> *"The struggle for a free intelligence has always been a struggle between the ironic and the literal mind."*
+Unlike other pentest frameworks that stuff their outputs into Docker containers (ah yes, the great equalizer of modern laziness), we operate **uncontained**. Our world model lives in the open—inspectable, falsifiable, and delightfully uncomfortable for those who prefer their security theater neatly packaged.
 
-### Why "Uncontained"?
+### The Core Proposition
 
-The upstream Shannon project is excellent software wrapped in unfortunate assumptions:
+Most security tools produce certainty. *They lie.*
 
-1. **That Docker is the natural habitat of Node.js applications** — It is not. Docker is a deployment strategy, not a prerequisite. Wrapping a JavaScript runtime in a Linux userspace to achieve "portability" is solving a problem that `npm install` solved decades ago.
+A port scan that returns "open" tells you nothing about what lies behind it. A credential that works today may not work tomorrow. A vulnerability that exists in staging may be patched in production. Traditional tools flatten this rich epistemic landscape into boolean flags.
 
-2. **That source code is always available** — A charming assumption for internal security teams, but the real world contains applications whose source you cannot access, must not access, or have simply lost.
-
-3. **That one LLM provider rules them all** — Claude is excellent. So is GPT-4. So is Gemini. A tool that demands vendor loyalty is a tool with an expiration date.
-
-This fork addresses these assumptions. We call it "Uncontained" because:
-- It runs *outside* containers by default
-- It handles *uncontained* scope (black-box testing)
-- It remains *uncontained* by vendor lock-in
-
-### What This Fork Adds
-
-| Capability | Upstream Shannon | Shannon Uncontained |
-|:-----------|:---------------:|:-------------------:|
-| Native execution | Via Docker | **Direct** |
-| Black-box reconnaissance | ❌ | **✅** |
-| Multi-provider LLM | Claude only | **Claude, OpenAI, GitHub Models, Ollama, llama.cpp, LM Studio** |
-| LSG v2 World Model | ❌ | **✅ (15 specialized agents)** |
-| Epistemic reasoning | ❌ | **✅ (EBSL/EQBSL)** |
-| Synthesis agents | ❌ | **✅ (SourceGen, SchemaGen, TestGen, Docs)** |
-| Validation harness | ❌ | **✅ (Parse, Lint, Typecheck)** |
-| CI/CD integration | ❌ | **✅ (GitHub Actions)** |
-| SARIF reporting | ❌ | **✅** |
-| OWASP Top 10 mapping | ❌ | **✅** |
-
-### What This Fork Does *Not* Change
-
-The core architecture remains identical. The exploitation methodology is unchanged. The agents, the prompts, the parallel processing — all inherited from upstream. We are not rewriting Shannon; we are *extending* it.
-
-**This is not a hostile fork.** It is a divergent one. The upstream maintainers have built something genuinely useful, and this fork exists to push it in directions they may not prioritize. If any of these features prove valuable, we would be delighted to see them merged upstream.
+Shannon-Uncontained takes a different approach: every observation is encoded with its **belief**, **disbelief**, **uncertainty**, and **base rate**. We call this the **EQBSL tensor**—Evidence-Quantified Bayesian Subjective Logic—and it is the spine upon which our entire world model hangs.
 
 ---
 
-## 🎯 What is Shannon?
+## Philosophy (Or: Why We Built This)
 
-Shannon is an AI pentester that delivers actual exploits, not just alerts.
+### The Problem With Certainty
 
-While lesser tools content themselves with generating alarming JSON files full of theoretical vulnerabilities, Shannon does the intellectually honest thing: it *attacks your application* and shows you the receipts. If it can't exploit a vulnerability, it doesn't report it. This is not timidity — it is rigor.
+Most pentest reports read like religious proclamations: *"The system is vulnerable to SQL injection."* Full stop. No uncertainty. No provenance. No acknowledgment that the tester ran the payload three times on a Tuesday afternoon against a staging environment that shares approximately 40% of its codebase with production.
 
-**The Problem Shannon Addresses:**
+This is not science. This is **cargo cult security**.
 
-Your team ships code continuously. Your penetration test happens annually, if you're lucky. This creates what we might charitably call a "security gap" — though "yawning chasm of organizational denial" is more accurate. For 364 days a year, you're shipping code that no adversarial intelligence has examined.
+### The EQBSL Alternative
 
-Shannon closes this gap by acting as your on-demand pentester. It doesn't merely *identify* issues; it *exploits* them, providing evidence that even the most determined skeptic cannot dismiss.
+We adopt the epistemic framework of [Evidence-Based Subjective Logic](./EQBSL-Primer.md), extended into tensor space with explicit operator semantics. Every claim in our world model carries:
+
+| Component | Symbol | Meaning |
+|-----------|--------|---------|
+| **Belief** | `b` | Confidence the claim is true |
+| **Disbelief** | `d` | Confidence the claim is false |
+| **Uncertainty** | `u` | Lack of evidence either way |
+| **Base Rate** | `a` | Prior probability in similar contexts |
+
+With the constraint: `b + d + u = 1`
+
+The **expectation** `E = b + a·u` gives us a probability estimate that honestly accounts for what we don't know. Uncertainty only decreases as evidence accumulates. You cannot hand-wave it into nonexistence.
 
 ---
 
-## 🚀 Setup & Usage
+## Core Architecture
 
-### Prerequisites
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Shannon-Uncontained                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐   │
+│  │   Recon      │───▶│   World      │───▶│   Epistemic  │   │
+│  │   Agents     │    │   Model      │    │   Ledger     │   │
+│  └──────────────┘    └──────────────┘    └──────────────┘   │
+│         │                   │                   │            │
+│         ▼                   ▼                   ▼            │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐   │
+│  │   Evidence   │◀──▶│   Claims     │◀──▶│   EQBSL      │   │
+│  │   Graph      │    │   & Proofs   │    │   Tensors    │   │
+│  └──────────────┘    └──────────────┘    └──────────────┘   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
-- **Node.js 18+** — the runtime, not a container pretending to contain a runtime
-- **API credentials** — Claude, OpenAI, GitHub Models, or run locally with Ollama/llama.cpp/LM Studio (see `.env.example`)
-- **Optional reconnaissance tools** — `nmap`, `subfinder`, `whatweb`, `gau`, `katana`
+### Key Components
 
-### Installation
+- **Recon Agents**: Orchestrate tools (nmap, subfinder, whatweb, etc.) and emit structured evidence
+- **World Model**: Central knowledge graph of entities, claims, and relations
+- **Epistemic Ledger**: Manages EQBSL tensors for all subjects; tracks uncertainty honestly
+- **Evidence Graph**: Append-only store with content-addressed events and provenance
+- **Budget Manager**: Resource constraints (time, tokens, network) to prevent runaway agents
+
+---
+
+## Quick Start
 
 ```bash
-# Clone the repository
-git clone https://github.com/Steake/shannon.git
-cd shannon
-
-# Install dependencies
+# Clone and install
+git clone https://github.com/Steake/shannon-uncontained.git
+cd shannon-uncontained
 npm install
 
-# Configure your environment
-cp .env.example .env
-# Edit .env with your API credentials
+# Generate reconnaissance for a target
+./shannon.mjs generate https://example.com
 
-# Install Playwright browsers (for JavaScript-rendered applications)
-npx playwright install chromium
+# View the world model
+./shannon.mjs model show --workspace shannon-results/repos/example.com
+
+# Export interactive knowledge graph
+./shannon.mjs model export-html --workspace shannon-results/repos/example.com --view provenance
 ```
 
-### Running Shannon
+### Graph View Modes
 
-**White-box mode (with source code):**
+| Mode | Description |
+|------|-------------|
+| `topology` | Infrastructure network: subdomains → path categories → ports |
+| `evidence` | Agent provenance: which agent discovered what evidence |
+| `provenance` | EBSL-native: source → event_type → target with tensor edges |
+
+---
+
+## The Evidence-First Workflow
+
+### 1. Reconnaissance Phase
+
+Agents emit **evidence events** into the graph:
+
+```javascript
+{
+  source: 'NetRecon',
+  event_type: 'PORT_SCAN',
+  target: 'example.com',
+  payload: { port: 443, state: 'open', service: 'https' },
+  timestamp: '2024-01-15T10:30:00Z'
+}
+```
+
+### 2. Claim Derivation
+
+Evidence supports **claims** with explicit confidence:
+
+```javascript
+{
+  subject: 'example.com:443',
+  predicate: 'runs_service',
+  object: 'nginx',
+  confidence: 0.85,
+  evidenceIds: ['ev_a1b2c3', 'ev_d4e5f6']
+}
+```
+
+### 3. EQBSL Tensor Assignment
+
+Every claim carries a tensor: `(b, d, u, a)`
+
+```javascript
+// High-confidence claim from strong evidence
+{ b: 0.82, d: 0.03, u: 0.15, a: 0.5 }
+// Expectation: 0.82 + 0.5 × 0.15 = 0.895
+
+// Low-confidence claim from weak evidence  
+{ b: 0.20, d: 0.10, u: 0.70, a: 0.5 }
+// Expectation: 0.20 + 0.5 × 0.70 = 0.55
+```
+
+### 4. Visualization
+
+The knowledge graph renders edges styled by their epistemic state:
+- **Color**: Cyan (high belief) → Yellow (uncertain) → Red (low belief)
+- **Width**: Thicker edges = higher expectation
+- **Opacity**: More opaque = less uncertainty
+
+---
+
+## Why "Uncontained"?
+
+Because Docker containers are a confession of architectural defeat.
+
+More seriously: traditional pentest tools often operate in isolated silos. Nmap knows nothing of what Burp discovered. Nuclei doesn't care what your manual testing revealed. Each tool produces its own artifact, and some poor analyst must stitch together a coherent narrative.
+
+Shannon-Uncontained rejects this fragmentation. All evidence flows into a single world model. All claims reference their evidentiary basis. All uncertainty is tracked, not hidden.
+
+We are uncontained in the sense that our knowledge refuses to be boxed, our uncertainty refuses to be denied, and our architecture refuses to pretend that security is a simple matter of running the right script.
+
+---
+
+## Project Structure
+
+```
+shannon-uncontained/
+├── shannon.mjs                 # CLI entry point
+├── local-source-generator.mjs  # Black-box recon orchestration
+├── src/
+│   ├── core/
+│   │   ├── WorldModel.js       # Central knowledge graph
+│   │   ├── BudgetManager.js    # Resource constraints
+│   │   └── EpistemicLedger.js  # EQBSL tensor management
+│   ├── cli/
+│   │   └── commands/           # CLI command handlers
+│   └── local-source-generator/
+│       └── v2/
+│           └── worldmodel/
+│               └── evidence-graph.js  # Append-only event store
+├── EQBSL-Primer.md             # Full EQBSL specification
+└── workspaces/                 # Generated reconnaissance outputs
+```
+
+---
+
+## CLI Reference
 
 ```bash
-./shannon.mjs "https://your-app.com/" "./path/to/source"
+# Core commands
+shannon run <target> [options]        # Full pentest pipeline
+shannon generate <target> [options]   # Recon-only, builds world model
+
+# Model introspection
+shannon model show --workspace <dir>           # ASCII visualization
+shannon model graph --workspace <dir>          # ASCII knowledge graph
+shannon model export-html --workspace <dir>    # Interactive D3.js graph
+shannon model why <claim_id> --workspace <dir> # Explain a claim's evidence
+
+# Evidence commands
+shannon evidence stats --workspace <dir>  # Evidence statistics
 ```
 
-**Black-box mode (without source code):**
+---
 
-```bash
-# Generate synthetic source from reconnaissance
-node local-source-generator.mjs --target "https://your-app.com" --output "./synthetic-source"
+## EQBSL In Practice
 
-# Run Shannon against the synthetic source
-./shannon.mjs "https://your-app.com/" "./synthetic-source"
-```
+For the mathematically inclined, see [EQBSL-Primer.md](./EQBSL-Primer.md) for the complete specification.
 
-### Configuration
+The short version:
 
-Create a YAML configuration file for authenticated testing:
-
-```yaml
-authentication:
-  login_type: form
-  login_url: "https://your-app.com/login"
-  credentials:
-    username: "test@example.com"
-    password: "yourpassword"
-    totp_secret: "LB2E2RX7XFHSTGCK"  # Optional for 2FA
-
-  login_flow:
-    - "Type $username into the email field"
-    - "Type $password into the password field"
-    - "Click the 'Sign In' button"
-
-  success_condition:
-    type: url_contains
-    value: "/dashboard"
-```
-
-### CI/CD Integration
-
-Shannon includes a GitHub Actions workflow for automated security scanning:
-
-**Manual Trigger:**
-
-1. Copy `.github/workflows/shannon-scan.yml` to your repository
-2. Go to Actions → Shannon Security Scan → Run workflow
-3. Enter your target URL and configuration
-4. Review results in the Security tab and workflow artifacts
-
-**Scheduled Scanning:**
-
-The workflow runs automatically weekly on Monday at 2am UTC (configurable in the workflow file).
-
-**Integration Example:**
-
-You can also trigger the scan from your own workflows:
-
-```yaml
-name: Deploy with Security Check
-on: [push]
-
-jobs:
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Trigger Shannon scan
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'shannon-scan.yml',
-              ref: 'main',
-              inputs: {
-                target_url: 'https://staging.your-app.com'
-              }
-            })
-```
-
-The workflow automatically:
-- Installs Shannon and required tools
-- Runs reconnaissance and exploitation
-- Generates SARIF reports for GitHub Security tab
-- Uploads findings as workflow artifacts
-- Creates markdown summaries in PR comments
-
-See `.github/workflows/shannon-scan.yml` for the full reusable workflow.
+1. **Evidence is vector-valued**: Multiple channels (positive/negative) per observation
+2. **Opinions derive from evidence**: `b = r/(r+s+K)`, `d = s/(r+s+K)`, `u = K/(r+s+K)`
+3. **Decay is mandatory**: Evidence loses weight over time (configurable per channel)
+4. **Propagation is explicit**: Transitive trust uses damped witness discounting
+5. **Embeddings are deterministic**: ML-ready features derived reproducibly from state
 
 ---
 
-## ✨ Features
+## Contributing
 
-### Core Capabilities
+We welcome contributions, particularly from those who:
 
-- **Fully Autonomous Operation** — Launch with a single command. The AI handles reconnaissance, exploitation, and reporting without intervention.
+- Find certainty suspicious
+- Think Bayesian priors are a good start but not enough
+- Believe security tools should explain their reasoning
+- Have opinions about epistemic humility in adversarial contexts
 
-- **Proof-of-Concept or It Didn't Happen** — Every reported vulnerability comes with a reproducible exploit. No theoretical hand-wraving.
-
-- **Multi-Provider LLM Support** — Claude, OpenAI, GitHub Models, Ollama, llama.cpp, LM Studio. Vendor lock-in is for those who've stopped thinking.
-
-- **Black-Box Reconnaissance** — The Local Source Generator creates synthetic source from crawled endpoints when real source isn't available.
-
-- **Parallel Processing** — Analysis and exploitation run concurrently across vulnerability categories.
-
-### Advanced Reconnaissance *(Phase 3: The Interesting Bits)*
-
-Shannon Uncontained includes specialized analyzers that find what conventional scanners miss:
-
-- **API Discovery** — Harvests OpenAPI/Swagger specs, GraphQL introspection, and API endpoints buried in JavaScript bundles. Generates `schemathesis` configs for automated API fuzzing.
-
-- **Technology Fingerprinting** — Identifies frameworks, CMSs, WAFs, and CDNs through enhanced `whatweb` integration and behavioral analysis. Knows what you're running before you remember deploying it.
-
-- **Shadow IT Hunter** — Discovers forgotten infrastructure, dev/staging environments, misconfigured S3 buckets in client-side code, and Git leakage (`.git` folder reconstruction). Finds what your org forgot they deployed.
-
-- **Dark Matter Analysis** — Detects hidden endpoints in comments, obfuscated code patterns, WebSocket connections, and classic forgotten directories (`/admin`, `/backup`, `/staging`). The invisible made visible.
-
-- **Ghost Traffic Generation** — Replays sanitized traffic patterns, performs adversarial fuzzing, simulates race conditions, and mimics legitimate user behavior to uncover timing-based vulnerabilities.
-
-- **Misconfig Detector ("They Did It Wrong")** — Finds developer mistakes across multiple categories:
-  - **Debug features**: Debug flags (`?debug=true`, `?admin=1`), CSS-hidden admin panels (`display:none` as security)
-  - **Hardcoded secrets**: AWS keys, GitHub tokens, JWT secrets, API keys, passwords, connection strings
-  - **Development artifacts**: Hardcoded `localhost` in production bundles, build path leaks (`/Users/dev/...`)
-  - **Security misconfigs**: CORS set to `*`, leaked TODOs/FIXMEs with security implications
-
-- **Vulnerability Mapper** — Maps discovered endpoints to OWASP vulnerability classes, identifies input vectors (query params, forms, headers), generates synthetic sources for data flow analysis, and creates hypothesis queues for exploitation.
-
-- **LLM-Powered Analysis** — Uses AI to infer architecture from crawled data, generate data flow models, identify API patterns (REST/GraphQL), and detect authentication flows. Intelligence compensating for lack of information.
-
-### Enterprise Features *(Phase 4: The Boring But Necessary Bits)*
-
-- **CI/CD Integration** — GitHub Actions workflow template for automated security scanning in your pipeline. Includes artifact upload and SARIF report generation for GitHub Security tab integration.
-
-- **Multi-Format Reporting** — JSON for robots, HTML for humans who pretend to read them, SARIF for compliance automation. Choose your format based on who's asking.
-
-- **OWASP Top 10 Mapping** — All findings mapped to OWASP Top 10 2021 categories for audit and compliance requirements.
-
-- **Audit Trail** — Comprehensive evidence logging with timestamps and metadata. CYA documentation that actually documents something.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-## 🏗️ Architecture
+## Roadmap
 
-Shannon emulates a human penetration tester's methodology through a multi-agent architecture. This fork extends the pipeline with black-box reconnaissance capabilities:
+### v0.1 ✅ (Current)
+- [x] World Model with EQBSL tensors
+- [x] Evidence Graph (append-only)
+- [x] CLI with `generate`, `model show/graph/export-html`
+- [x] Three graph view modes (topology, evidence, provenance)
 
-```mermaid
-flowchart TB
-    subgraph FORK["🔓 SHANNON UNCONTAINED"]
-        direction TB
-        
-        subgraph Input["Input Selection"]
-            direction LR
-            SRC["📁 Source Code<br/>(White-box)"]
-            URL["🌐 Target URL<br/>(Black-box)"]
-        end
-        
-        subgraph LSG["Local Source Generator"]
-            direction TB
-            RECON["🔍 External Recon<br/>gau, katana, nmap"]
-            CRAWL["🕷️ Active Crawling<br/>Playwright, JS Analysis"]
-            SYNTH["🏭 Pseudo-Source<br/>Builder"]
-            RECON --> CRAWL --> SYNTH
-        end
-        
-        subgraph LLM["Multi-Provider LLM"]
-            direction LR
-            CLAUDE["Claude"]
-            GPT["OpenAI"]
-            GITHUB["GitHub<br/>Models"]
-        end
-    end
-    
-    subgraph ORIG["📦 OG SHANNON"]
-        direction TB
-        
-        subgraph Phase1["Phase 1: Pre-Reconnaissance"]
-            PREC[("🗺️ Code Analysis<br/>& Mapping")]
-        end
-        
-        subgraph Phase2["Phase 2: Vulnerability Analysis"]
-            direction LR
-            VA1["Injection"]
-            VA2["XSS"]
-            VA3["Auth/AuthZ"]
-            VA4["SSRF"]
-        end
-        
-        subgraph Phase3["Phase 3: Exploitation"]
-            direction LR
-            E1["💉 Inject"]
-            E2["📜 XSS"]
-            E3["🔐 Auth"]
-            E4["🌐 SSRF"]
-        end
-        
-        subgraph Phase4["Phase 4: Reporting"]
-            REP[("📋 Validated<br/>Findings Only")]
-        end
-        
-        Phase1 --> VA1 & VA2 & VA3 & VA4
-        VA1 --> E1
-        VA2 --> E2
-        VA3 --> E3
-        VA4 --> E4
-        E1 & E2 & E3 & E4 --> REP
-    end
-    
-    SRC --> Phase1
-    URL --> LSG
-    LSG --> |"Synthetic Source"| Phase1
-    CLAUDE & GPT & GITHUB -.-> |"Powers All Agents"| Phase1
-    
-    style FORK fill:#1a2f1a,stroke:#4a4,stroke-width:3px,color:#8f8
-    style ORIG fill:#1a1a2f,stroke:#66f,stroke-width:3px,color:#aaf
-    style LSG fill:#2d5a27,stroke:#4a4,color:#fff
-    style LLM fill:#1a3a5c,stroke:#48f,color:#fff
-```
+### v0.2 (In Progress)
+- [ ] Full pentest pipeline with agent orchestration
+- [ ] LLM-integrated analysis agents
+- [ ] Claim propagation with transitive discounting
+- [ ] Temporal decay implementation
 
-**Legend:**
-- 🟢 **Green border** — Fork additions (black-box recon, multi-provider LLM)
-- 🔵 **Blue border** — Original Shannon architecture (unchanged)
-
-### Phase Descriptions
-
-#### 🟢 Pre-Phase: Input Selection & Source Generation *(Fork Addition)*
-
-Before the original Shannon pipeline begins, this fork adds a critical decision point:
-
-- **White-box path**: If source code is available, proceed directly to Phase 1
-- **Black-box path**: If only a URL is available, invoke the **Local Source Generator**:
-  1. **External Reconnaissance** — `gau` harvests historical URLs, `katana` actively crawls, `nmap`/`subfinder`/`whatweb` fingerprint the target
-  2. **Active Crawling** — Playwright renders JavaScript, extracts links/forms, analyzes client-side code
-  3. **Pseudo-Source Builder** — Generates synthetic route files, models, and configs that downstream agents can analyze
-
-#### 🟢 LLM Provider Selection *(Fork Addition)*
-
-All agents are powered by your choice of LLM provider:
-- **Claude** (Anthropic) — Original provider, excellent for code analysis
-- **OpenAI** (GPT-4) — Alternative with different strengths
-- **GitHub Models** — Free tier access to various models
-- **Ollama** — Local models without API costs
-- **llama.cpp** — Native local inference
-- **LM Studio** — GUI-based local model hosting
-
-Configure via `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `LLM_PROVIDER` environment variables. See `.env.example` for all options.
-
-#### 🔵 Phase 1: Pre-Reconnaissance
-
-Map the attack surface through source analysis (real or synthetic) and live exploration. The agent builds a comprehensive understanding of:
-- Application architecture and entry points
-- API endpoints and parameters
-- Authentication mechanisms and session handling
-- Technology stack and framework-specific patterns
-
-#### 🔵 Phase 2: Vulnerability Analysis
-
-Parallel agents hunt for flaws across four OWASP categories simultaneously:
-- **Injection** — SQL, NoSQL, command injection vectors
-- **XSS** — Reflected, stored, DOM-based cross-site scripting
-- **Auth/AuthZ** — Broken authentication and authorization flaws
-- **SSRF** — Server-side request forgery opportunities
-
-Each agent traces user input from sources to dangerous sinks, building exploitation hypotheses.
-
-#### 🔵 Phase 3: Exploitation
-
-Hypotheses become proofs. Dedicated exploit agents attempt real attacks:
-- Browser automation for client-side exploits
-- Direct HTTP requests for injection attacks
-- Session manipulation for auth bypass
-
-**No exploit, no report.** If a vulnerability cannot be demonstrated, it is not reported.
-
-#### 🔵 Phase 4: Reporting
-
-Validated findings compiled into actionable reports with:
-- Reproducible proof-of-concept code
-- Step-by-step exploitation instructions
-- Severity assessment and remediation guidance
-- Multiple output formats: JSON (machine-readable), HTML (human-readable with dark theme), SARIF (GitHub Security integration)
-- OWASP Top 10 2021 mapping for compliance
-- Comprehensive audit trail with timestamps
-
-### LSG v2 Agents *(Architecture Rewrite)*
-
-The Local Source Generator v2 implements a "World Model First" architecture with 15 specialized agents:
-
-```
-EvidenceGraph → TargetModel → ArtifactManifest
-       ↑              ↓
-  Recon Agents   Synthesis Agents
-       ↑              ↓
-  Tool Runners   Validation Harness
-```
-
-| Phase | Agent | Purpose | Tools/Methods |
-|:------|:------|:--------|:--------------|
-| **Recon** | `NetReconAgent` | Infrastructure scanning | nmap port scanning |
-| **Recon** | `CrawlerAgent` | Endpoint discovery | katana, gau historical URLs |
-| **Recon** | `TechFingerprinterAgent` | Framework detection | whatweb, httpx |
-| **Recon** | `JSHarvesterAgent` | JavaScript analysis | Bundle extraction, AST parsing |
-| **Recon** | `APIDiscovererAgent` | API schema discovery | OpenAPI, GraphQL introspection |
-| **Recon** | `SubdomainHunterAgent` | Subdomain enumeration | subfinder |
-| **Analysis** | `ArchitectInferAgent` | Architecture inference | LLM-powered analysis |
-| **Analysis** | `AuthFlowAnalyzer` | Auth flow detection | Token/session analysis |
-| **Analysis** | `DataFlowMapper` | Data flow tracing | Source-to-sink mapping |
-| **Analysis** | `VulnHypothesizer` | Vulnerability hypotheses | OWASP-grounded generation |
-| **Analysis** | `BusinessLogicAgent` | Workflow detection | State machine identification |
-| **Synthesis** | `SourceGenAgent` | Code generation | Express/FastAPI scaffolds |
-| **Synthesis** | `SchemaGenAgent` | Schema generation | OpenAPI, GraphQL schemas |
-| **Synthesis** | `TestGenAgent` | Test generation | Jest/Supertest, security tests |
-| **Synthesis** | `DocumentationAgent` | Documentation | Model-driven docs with provenance |
-
-**Key Features:**
-- **Epistemic Ledger**: EBSL/EQBSL uncertainty quantification for every claim
-- **Validation Harness**: Parse, lint, typecheck validation for generated code
-- **Scaffold Packs**: Framework-specific templates (Express.js, FastAPI)
-- **39 Tests**: Comprehensive test suite across 12 component categories
-
-All agents follow strict contracts and emit evidence through the world model spine.
+### v1.0 (Future)
+- [ ] ZK proofs for evidence provenance
+- [ ] Adversarial simulation mode
+- [ ] Report generation with uncertainty quantification
+- [ ] Integration with external vulnerability databases
 
 ---
 
-## 📊 Sample Reports & Benchmarks
+## FAQ
 
-Shannon's capabilities demonstrated on industry-standard vulnerable applications:
+**Q: Is this just another wrapper around existing tools?**
 
-| Target | Vulnerabilities Found | Key Achievements |
-|:-------|:---------------------:|:-----------------|
-| **[OWASP Juice Shop](sample-reports/shannon-report-juice-shop.md)** | 20+ | Complete auth bypass, database exfiltration |
-| **[c{api}tal API](sample-reports/shannon-report-capital-api.md)** | 15 | Root-level injection, privilege escalation |
-| **[OWASP crAPI](sample-reports/shannon-report-crapi.md)** | 15+ | JWT attacks, full database compromise |
+A: No. It's an epistemic framework that happens to orchestrate tools. The tools produce observations; we produce knowledge—with explicit uncertainty.
 
----
+**Q: Why EQBSL instead of simple confidence scores?**
 
-## 📋 Fork-Specific Documentation
+A: Because "80% confident" conflates two very different states: "I have strong evidence for yes" and "I have weak evidence both ways." EQBSL separates belief, disbelief, and uncertainty. This matters when making decisions.
 
-| Document | Purpose |
-|:---------|:--------|
-| **[LSG-TODO.md](./LSG-TODO.md)** | Local Source Generator roadmap |
-| **[MODS.md](./MODS.md)** | Modifications log for this fork |
-| **[COVERAGE.md](./COVERAGE.md)** | Security testing coverage |
-| **[SHANNON-PRO.md](./SHANNON-PRO.md)** | Pro vs Lite comparison (upstream) |
+**Q: Why the Hitchens quote?**
+
+A: Because penetration testing is, at its core, an exercise in skepticism. We question the claims of system administrators, developers, and security vendors. Our evidence must be solid enough to survive cross-examination.
 
 ---
 
-## ⚠️ Disclaimers
+## License
 
-### This Is Not a Passive Scanner
-
-Shannon actively exploits vulnerabilities to prove they exist. This has consequences.
-
-> [!WARNING]
-> **Do not run Shannon on production environments.**
->
-> It will create users. It will modify data. It will execute injection attacks. This is not a bug; it is the point. Use staging or development environments exclusively.
-
-### Legal & Ethical Use
-
-> [!CAUTION]
-> **You must have explicit, written authorization** from the system owner before running Shannon.
->
-> Unauthorized security testing is illegal under laws like the Computer Fraud and Abuse Act. We are not responsible for your poor decisions.
-
-### LLM Limitations
-
-The underlying models can hallucinate. Human verification of findings remains essential. Trust, but verify.
-
-### Fork Status
-
-> [!IMPORTANT]
-> **This is an independent fork, not an official Keygraph product.**
->
-> For enterprise features, Shannon Pro, or commercial support, contact the [original maintainers](https://github.com/KeygraphHQ/shannon).
+AGPL-3.0. Because if you're going to use epistemic tools, you should share your improvements with the epistemic commons.
 
 ---
 
-## 📜 A Note to the Shannon Maintainers
+## Credits
 
-This fork exists in the spirit of open source: taking good software and making it work in contexts the original authors didn't prioritize. We have:
-
-- Preserved all copyright notices and license terms
-- Maintained attribution throughout
-- Not misrepresented this as official Keygraph software
-- Made our modifications explicit and documented
-
-We would be genuinely pleased if any of these features — particularly the multi-provider LLM support and black-box reconnaissance — proved useful enough to merge upstream. Consider this a feature branch that happened to take a scenic route.
-
-If you object to anything here, we're happy to discuss. If you'd like to collaborate, even better.
-
-In the meantime, we'll be over here, running pentests without Docker.
-
-*— The Uncontained*
-
----
-
-## 📜 License
-
-Shannon Lite is released under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
-
-Use it freely. Modify it privately. If you offer it as a service, share your modifications. The license exists to keep honest people honest — and this fork honors that principle.
-
----
-
-## 👥 Community & Support
-
-- 🐛 **Report bugs** via [GitHub Issues](https://github.com/Steake/shannon/issues)
-- 💡 **Suggest features** in [Discussions](https://github.com/Steake/shannon/discussions)
-- 💬 **Discord**: [Join the conversation](https://discord.gg/KAqzSHHpRt)
+- **EBSL foundations**: Audun Jøsang (Subjective Logic), Boris Škorić et al. (Evidence-Based Subjective Logic)
+- **Name inspiration**: Claude Shannon, the father of information theory
+- **Philosophical guidance**: Christopher Hitchens, who reminded us that skepticism is a virtue
 
 ---
 
 <p align="center">
-  <b>Shannon Uncontained</b><br>
-  <i>Because some applications need to be broken before they can be fixed — and some tools need to escape their containers to do it.</i>
+  <i>"That which can be measured should be measured with uncertainty."</i>
 </p>
