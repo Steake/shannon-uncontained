@@ -1,592 +1,130 @@
-#!/usr/bin/env zx
+#!/usr/bin/env node
 // Copyright (C) 2025 Keygraph, Inc.
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License version 3
 // as published by the Free Software Foundation.
 
-import { path, fs, $ } from 'zx';
+import { program } from 'commander';
 import chalk from 'chalk';
 import dotenv from 'dotenv';
+import { runCommand } from './src/cli/commands/RunCommand.js';
+import { evidenceCommand } from './src/cli/commands/EvidenceCommand.js';
+import { modelCommand } from './src/cli/commands/ModelCommand.js';
 
 dotenv.config();
 
-// Config and Tools
-import { parseConfig, distributeConfig } from './src/config-parser.js';
-import { checkToolAvailability, handleMissingTools } from './src/tool-checker.js';
+program
+  .name('shannon')
+  .description('AI Penetration Testing Agent - World-Model First Architecture')
+  .version('2.0.0');
 
-// Session and Checkpoints
-import { createSession, updateSession, getSession, AGENTS } from './src/session-manager.js';
-import { runPhase, getGitCommitHash } from './src/checkpoint-manager.js';
+// GLOBAL OPTIONS
+program
+  .option('-q, --quiet', 'Suppress output')
+  .option('-v, --verbose', 'Verbose output')
+  .option('--debug', 'Debug mode');
 
-// Setup and Deliverables
-import { setupLocalRepo } from './src/setup/environment.js';
+// RUN COMMAND
+program
+  .command('run')
+  .description('Execute a pentest session against a target')
+  .argument('<target>', 'Target URL')
+  .option('--mode <mode>', 'Execution mode: live, replay, dry-run', 'live')
+  .option('--workspace <dir>', 'Directory for artifacts and evidence')
+  .option('--evidence-in <file>', 'Input evidence file for replay')
+  .option('--evidence-out <file>', 'Output evidence file')
+  .option('--profile <profile>', 'Execution profile (ci, recon-only, full)', 'full')
+  .option('--config <file>', 'Path to configuration file')
+  // Budget Options
+  .option('--max-time-ms <ms>', 'Max execution time in ms', parseInt)
+  .option('--max-tokens <n>', 'Max tokens allowed', parseInt)
+  .option('--max-network-requests <n>', 'Max network requests', parseInt)
+  .option('--max-tool-invocations <n>', 'Max tool invocations', parseInt)
+  .action(async (target, options) => {
+    // Set global flags
+    global.SHANNON_QUIET = options.quiet || program.opts().quiet;
+    global.SHANNON_VERBOSE = options.verbose || program.opts().verbose;
 
-// AI and Prompts
-import { runClaudePromptWithRetry } from './src/ai/claude-executor.js';
-import { loadPrompt } from './src/prompts/prompt-manager.js';
-
-// Phases
-import { executePreReconPhase } from './src/phases/pre-recon.js';
-import { assembleFinalReport } from './src/phases/reporting.js';
-
-// Utils
-import { timingResults, costResults, displayTimingSummary, Timer } from './src/utils/metrics.js';
-import { formatDuration, generateAuditPath } from './src/audit/utils.js';
-
-// CLI
-import { handleDeveloperCommand } from './src/cli/command-handler.js';
-import { showHelp, displaySplashScreen } from './src/cli/ui.js';
-import { validateWebUrl, validateRepoPath } from './src/cli/input-validator.js';
-
-// Local Source Generator (Black-box mode)
-import { generateLocalSource } from './local-source-generator.mjs';
-
-// Error Handling
-import { PentestError, logError } from './src/error-handling.js';
-
-// Session Manager Functions
-import {
-  calculateVulnerabilityAnalysisSummary,
-  calculateExploitationSummary,
-  getNextAgent
-} from './src/session-manager.js';
-
-// Configure zx to disable timeouts (let tools run as long as needed)
-$.timeout = 0;
-
-// Setup graceful cleanup on process signals
-process.on('SIGINT', async () => {
-  console.log(chalk.yellow('\n⚠️ Received SIGINT, cleaning up...'));
-
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  console.log(chalk.yellow('\n⚠️ Received SIGTERM, cleaning up...'));
-
-  process.exit(0);
-});
-
-// Main orchestration function
-async function main(webUrl, repoPath, configPath = null, pipelineTestingMode = false, disableLoader = false) {
-  // Set global flag for loader control
-  global.SHANNON_DISABLE_LOADER = disableLoader;
-
-  const totalTimer = new Timer('total-execution');
-  timingResults.total = totalTimer;
-
-  // Display splash screen
-  await displaySplashScreen();
-
-  console.log(chalk.cyan.bold('🚀 AI PENETRATION TESTING AGENT'));
-  console.log(chalk.cyan(`🎯 Target: ${webUrl}`));
-  console.log(chalk.cyan(`📁 Source: ${repoPath}`));
-  if (configPath) {
-    console.log(chalk.cyan(`⚙️ Config: ${configPath}`));
-  }
-  console.log(chalk.gray('─'.repeat(60)));
-
-  // Parse configuration if provided
-  let config = null;
-  let distributedConfig = null;
-  if (configPath) {
-    try {
-      // Resolve config path - check configs folder if relative path
-      let resolvedConfigPath = configPath;
-      if (!path.isAbsolute(configPath)) {
-        const configsDir = path.join(process.cwd(), 'configs');
-        const configInConfigsDir = path.join(configsDir, configPath);
-        // Check if file exists in configs directory, otherwise use original path
-        if (await fs.pathExists(configInConfigsDir)) {
-          resolvedConfigPath = configInConfigsDir;
-        }
-      }
-
-      config = await parseConfig(resolvedConfigPath);
-      distributedConfig = distributeConfig(config);
-      console.log(chalk.green(`✅ Configuration loaded successfully`));
-    } catch (error) {
-      await logError(error, `Configuration loading from ${configPath}`);
-      throw error; // Let the main error boundary handle it
-    }
-  }
-
-  // Check tool availability
-  const toolAvailability = await checkToolAvailability();
-  handleMissingTools(toolAvailability);
-
-  // Setup local repository
-  console.log(chalk.blue('📁 Setting up local repository...'));
-  let sourceDir;
-  try {
-    sourceDir = await setupLocalRepo(repoPath);
-    const variables = { webUrl, repoPath, sourceDir };
-    console.log(chalk.green('✅ Local repository setup successfully'));
-  } catch (error) {
-    console.log(chalk.red(`❌ Failed to setup local repository: ${error.message}`));
-    console.log(chalk.gray('This could be due to:'));
-    console.log(chalk.gray('  - Insufficient permissions'));
-    console.log(chalk.gray('  - Repository path not accessible'));
-    console.log(chalk.gray('  - Git initialization issues'));
-    console.log(chalk.gray('  - Insufficient disk space'));
-    process.exit(1);
-  }
-
-  const variables = { webUrl, repoPath, sourceDir };
-
-  // Create session for tracking (in normal mode)
-  const session = await createSession(webUrl, repoPath, configPath, sourceDir);
-  console.log(chalk.blue(`📝 Session created: ${session.id.substring(0, 8)}...`));
-
-  // If setup-only mode, exit after session creation
-  if (process.argv.includes('--setup-only')) {
-    console.log(chalk.green('✅ Setup complete! Local repository setup and session created.'));
-    console.log(chalk.gray('Use developer commands to run individual agents:'));
-    console.log(chalk.gray('  ./shannon.mjs --run-agent pre-recon'));
-    console.log(chalk.gray('  ./shannon.mjs --status'));
-    process.exit(0);
-  }
-
-  // Helper function to update session progress
-  const updateSessionProgress = async (agentName, commitHash = null) => {
-    try {
-      const updates = {
-        completedAgents: [...new Set([...session.completedAgents, agentName])],
-        failedAgents: session.failedAgents.filter(name => name !== agentName), // Remove from failed if it was there
-        status: 'in-progress'
-      };
-
-      if (commitHash) {
-        updates.checkpoints = { ...session.checkpoints, [agentName]: commitHash };
-      }
-
-      await updateSession(session.id, updates);
-      // Update local session object for subsequent updates
-      Object.assign(session, updates);
-      console.log(chalk.gray(`    📝 Session updated: ${agentName} completed`));
-    } catch (error) {
-      console.log(chalk.yellow(`    ⚠️ Failed to update session: ${error.message}`));
-    }
-  };
-
-  // Create outputs and deliverables directories in source directory
-  try {
-    const outputsDir = path.join(sourceDir, 'outputs');
-    await fs.ensureDir(outputsDir);
-    await fs.ensureDir(path.join(outputsDir, 'schemas'));
-    await fs.ensureDir(path.join(outputsDir, 'scans'));
-    // Ensure deliverables directory exists for agent output files
-    await fs.ensureDir(path.join(sourceDir, 'deliverables'));
-  } catch (error) {
-    throw new PentestError(
-      `Failed to create output directories: ${error.message}`,
-      'filesystem',
-      false,
-      { sourceDir, originalError: error.message }
-    );
-  }
-
-  // Check if we should continue from where session left off
-  const nextAgent = getNextAgent(session);
-  if (!nextAgent) {
-    console.log(chalk.green(`✅ All agents completed! Session is finished.`));
-    await displayTimingSummary(timingResults, costResults, session.completedAgents);
-    process.exit(0);
-  }
-
-  console.log(chalk.blue(`🔄 Continuing from ${nextAgent.displayName} (${session.completedAgents.length}/${Object.keys(AGENTS).length} agents completed)`));
-
-  // Determine which phase to start from based on next agent
-  const startPhase = nextAgent.name === 'pre-recon' ? 1
-    : nextAgent.name === 'recon' ? 2
-      : ['injection-vuln', 'xss-vuln', 'auth-vuln', 'ssrf-vuln', 'authz-vuln'].includes(nextAgent.name) ? 3
-        : ['injection-exploit', 'xss-exploit', 'auth-exploit', 'ssrf-exploit', 'authz-exploit'].includes(nextAgent.name) ? 4
-          : nextAgent.name === 'report' ? 5 : 1;
-
-  // PHASE 1: PRE-RECONNAISSANCE
-  if (startPhase <= 1) {
-    const { duration: preReconDuration } = await executePreReconPhase(
-      webUrl,
-      sourceDir,
-      variables,
-      distributedConfig,
-      toolAvailability,
-      pipelineTestingMode,
-      session.id  // Pass session ID for logging
-    );
-    timingResults.phases['pre-recon'] = preReconDuration;
-    await updateSessionProgress('pre-recon');
-  }
-
-  // PHASE 2: RECONNAISSANCE
-  if (startPhase <= 2) {
-    console.log(chalk.magenta.bold('\n🔎 PHASE 2: RECONNAISSANCE'));
-    console.log(chalk.magenta('Analyzing initial findings...'));
-    const reconTimer = new Timer('phase-2-recon');
-    const recon = await runClaudePromptWithRetry(
-      await loadPrompt('recon', variables, distributedConfig, pipelineTestingMode),
-      sourceDir,
-      '*',
-      '',
-      AGENTS['recon'].displayName,
-      'recon',  // Agent name for snapshot creation
-      chalk.cyan,
-      { id: session.id, webUrl }  // Session metadata for audit logging (STANDARD: use 'id' field)
-    );
-    const reconDuration = reconTimer.stop();
-    timingResults.phases['recon'] = reconDuration;
-
-    console.log(chalk.green(`✅ Reconnaissance complete in ${formatDuration(reconDuration)}`));
-    await updateSessionProgress('recon');
-  }
-
-  // PHASE 3: VULNERABILITY ANALYSIS
-  if (startPhase <= 3) {
-    const vulnTimer = new Timer('phase-3-vulnerability-analysis');
-    console.log(chalk.red.bold('\n🚨 PHASE 3: VULNERABILITY ANALYSIS'));
-
-    await runPhase('vulnerability-analysis', session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt);
-
-    // Display vulnerability analysis summary
-    const currentSession = await getSession(session.id);
-    const vulnSummary = calculateVulnerabilityAnalysisSummary(currentSession);
-    console.log(chalk.blue(`\n📊 Vulnerability Analysis Summary: ${vulnSummary.totalAnalyses} analyses, ${vulnSummary.totalVulnerabilities} vulnerabilities found, ${vulnSummary.exploitationCandidates} ready for exploitation`));
-
-    const vulnDuration = vulnTimer.stop();
-    timingResults.phases['vulnerability-analysis'] = vulnDuration;
-
-    console.log(chalk.green(`✅ Vulnerability analysis phase complete in ${formatDuration(vulnDuration)}`));
-  }
-
-  // PHASE 4: EXPLOITATION
-  if (startPhase <= 4) {
-    const exploitTimer = new Timer('phase-4-exploitation');
-    console.log(chalk.red.bold('\n💥 PHASE 4: EXPLOITATION'));
-
-    // Get fresh session data to ensure we have latest vulnerability analysis results
-    const freshSession = await getSession(session.id);
-    await runPhase('exploitation', freshSession, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt);
-
-    // Display exploitation summary
-    const finalSession = await getSession(session.id);
-    const exploitSummary = calculateExploitationSummary(finalSession);
-    if (exploitSummary.eligibleExploits > 0) {
-      console.log(chalk.blue(`\n🎯 Exploitation Summary: ${exploitSummary.totalAttempts}/${exploitSummary.eligibleExploits} attempted, ${exploitSummary.skippedExploits} skipped (no vulnerabilities)`));
-    } else {
-      console.log(chalk.gray(`\n🎯 Exploitation Summary: No exploitation attempts (no vulnerabilities found)`));
-    }
-
-    const exploitDuration = exploitTimer.stop();
-    timingResults.phases['exploitation'] = exploitDuration;
-
-    console.log(chalk.green(`✅ Exploitation phase complete in ${formatDuration(exploitDuration)}`));
-  }
-
-  // PHASE 5: REPORTING
-  if (startPhase <= 5) {
-    console.log(chalk.greenBright.bold('\n📊 PHASE 5: REPORTING'));
-    console.log(chalk.greenBright('Generating executive summary and assembling final report...'));
-    const reportTimer = new Timer('phase-5-reporting');
-
-    // First, assemble all deliverables into a single concatenated report
-    console.log(chalk.blue('📝 Assembling deliverables from specialist agents...'));
-
-    try {
-      await assembleFinalReport(sourceDir);
-    } catch (error) {
-      console.log(chalk.red(`❌ Error assembling final report: ${error.message}`));
-    }
-
-    // Then run reporter agent to create executive summary and clean up hallucinations
-    console.log(chalk.blue('📋 Generating executive summary and cleaning up report...'));
-    const execSummary = await runClaudePromptWithRetry(
-      await loadPrompt('report-executive', variables, distributedConfig, pipelineTestingMode),
-      sourceDir,
-      '*',
-      '',
-      'Executive Summary and Report Cleanup',
-      'report',  // Agent name for snapshot creation
-      chalk.cyan,
-      { id: session.id, webUrl }  // Session metadata for audit logging (STANDARD: use 'id' field)
-    );
-
-    const reportDuration = reportTimer.stop();
-    timingResults.phases['reporting'] = reportDuration;
-
-    console.log(chalk.green(`✅ Final report generated in ${formatDuration(reportDuration)}`));
-
-    // Get the commit hash after successful report generation for checkpoint
-    try {
-      const reportCommitHash = await getGitCommitHash(sourceDir);
-      await updateSessionProgress('report', reportCommitHash);
-      console.log(chalk.gray(`    📍 Report checkpoint saved: ${reportCommitHash.substring(0, 8)}`));
-    } catch (error) {
-      console.log(chalk.yellow(`    ⚠️ Failed to save report checkpoint: ${error.message}`));
-      await updateSessionProgress('report'); // Fallback without checkpoint
-    }
-  }
-
-  // Calculate final timing and cost data
-  const totalDuration = timingResults.total.stop();
-  const timingBreakdown = {
-    total: totalDuration,
-    phases: { ...timingResults.phases },
-    agents: { ...timingResults.agents },
-    commands: { ...timingResults.commands }
-  };
-
-  // Use accumulated cost data
-  const costBreakdown = {
-    total: costResults.total,
-    agents: { ...costResults.agents }
-  };
-
-  // Mark session as completed with timing and cost data
-  await updateSession(session.id, {
-    status: 'completed',
-    timingBreakdown,
-    costBreakdown
+    await runCommand(target, options);
   });
 
-  // Display comprehensive timing summary
-  displayTimingSummary();
+// EVIDENCE COMMAND
+program
+  .command('evidence')
+  .description('Manage and query the Evidence Graph')
+  .command('stats')
+  .argument('<workspace>', 'Workspace directory')
+  .action(async (workspace) => {
+    await evidenceCommand('stats', workspace);
+  });
 
-  console.log(chalk.cyan.bold('\n🎉 PENETRATION TESTING COMPLETE!'));
-  console.log(chalk.gray('─'.repeat(60)));
+// MODEL COMMAND
+const modelCmd = program
+  .command('model')
+  .description('Introspect the Target Model');
 
-  // Calculate audit logs path
-  const auditLogsPath = generateAuditPath(session);
+modelCmd
+  .command('why')
+  .argument('<claim_id>', 'ID of the claim/entity to explain')
+  .option('--workspace <dir>', 'Workspace directory', '.')
+  .action(async (claimId, options) => {
+    await modelCommand('why', claimId, options);
+  });
 
-  // Return final report path and audit logs path for clickable output
-  return {
-    reportPath: path.join(sourceDir, 'deliverables', 'comprehensive_security_assessment_report.md'),
-    auditLogsPath
-  };
-}
+modelCmd
+  .command('show')
+  .description('Visualize the world model with charts and graphs')
+  .option('--workspace <dir>', 'Workspace directory', '.')
+  .action(async (options) => {
+    await modelCommand('show', null, options);
+  });
 
-// Entry point - handle both direct node execution and shebang execution
-let args = process.argv.slice(2);
-// If first arg is the script name (from shebang), remove it
-if (args[0] && args[0].includes('shannon.mjs')) {
-  args = args.slice(1);
-}
+modelCmd
+  .command('graph')
+  .description('Display ASCII knowledge graph')
+  .option('--workspace <dir>', 'Workspace directory', '.')
+  .action(async (options) => {
+    await modelCommand('graph', null, options);
+  });
 
-// Parse flags and arguments
-let configPath = null;
-let pipelineTestingMode = false;
-let disableLoader = false;
-let quietMode = false;
-let verboseMode = false;
-const nonFlagArgs = [];
-let developerCommand = null;
-let blackboxMode = false;
-const developerCommands = ['--run-phase', '--run-all', '--rollback-to', '--rerun', '--status', '--list-agents', '--cleanup'];
+modelCmd
+  .command('export-html')
+  .description('Export interactive D3.js node graph to HTML file')
+  .option('--workspace <dir>', 'Workspace directory', '.')
+  .option('-o, --output <file>', 'Output file path')
+  .option('--view <mode>', 'Graph view mode: topology, evidence, provenance', 'topology')
+  .action(async (options) => {
+    await modelCommand('export-html', null, options);
+  });
 
-for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--config') {
-    if (i + 1 < args.length) {
-      configPath = args[i + 1];
-      i++; // Skip the next argument
-    } else {
-      console.log(chalk.red('❌ --config flag requires a file path'));
+// GENERATE COMMAND (Local Source Generator)
+program
+  .command('generate')
+  .description('Generate synthetic local source from black-box reconnaissance')
+  .argument('<target>', 'Target URL')
+  .option('-o, --output <dir>', 'Output directory', './shannon-results')
+  .option('--skip-nmap', 'Skip nmap port scan')
+  .option('--skip-crawl', 'Skip active crawling')
+  .option('--timeout <ms>', 'Global timeout for tools in ms', parseInt)
+  .action(async (target, options) => {
+    const { generateLocalSource } = await import('./local-source-generator.mjs');
+
+    console.log(chalk.cyan.bold('🔍 LOCAL SOURCE GENERATOR'));
+    console.log(chalk.gray(`Target: ${target}`));
+    console.log(chalk.gray(`Output: ${options.output}`));
+
+    try {
+      const result = await generateLocalSource(target, options.output, {
+        skipNmap: options.skipNmap,
+        skipCrawl: options.skipCrawl,
+        timeout: options.timeout
+      });
+      console.log(chalk.green(`\n✅ Local source generated at: ${result}`));
+    } catch (error) {
+      console.error(chalk.red(`\n❌ Generation failed: ${error.message}`));
       process.exit(1);
     }
-  } else if (args[i] === '--pipeline-testing') {
-    pipelineTestingMode = true;
-  } else if (args[i] === '--disable-loader') {
-    disableLoader = true;
-  } else if (args[i] === '--quiet' || args[i] === '-q') {
-    quietMode = true;
-  } else if (args[i] === '--verbose' || args[i] === '-v') {
-    verboseMode = true;
-  } else if (developerCommands.includes(args[i])) {
-    developerCommand = args[i];
-    // Collect remaining args for the developer command
-    const remainingArgs = args.slice(i + 1).filter(arg => !arg.startsWith('--') || arg === '--pipeline-testing' || arg === '--disable-loader');
+  });
 
-    // Check for --pipeline-testing in remaining args
-    if (remainingArgs.includes('--pipeline-testing')) {
-      pipelineTestingMode = true;
-    }
-
-    // Check for --disable-loader in remaining args
-    if (remainingArgs.includes('--disable-loader')) {
-      disableLoader = true;
-    }
-
-    // Add non-flag args (excluding --pipeline-testing and --disable-loader)
-    nonFlagArgs.push(...remainingArgs.filter(arg => arg !== '--pipeline-testing' && arg !== '--disable-loader'));
-    break; // Stop parsing after developer command
-  } else if (args[i] === '--blackbox' || args[i] === '--black-box') {
-    blackboxMode = true;
-  } else if (!args[i].startsWith('-')) {
-    nonFlagArgs.push(args[i]);
-  }
-}
-
-// Set global verbosity flags
-global.SHANNON_QUIET = quietMode;
-global.SHANNON_VERBOSE = verboseMode;
-
-// Handle help flag
-if (args.includes('--help') || args.includes('-h') || args.includes('help')) {
-  showHelp();
-  process.exit(0);
-}
-
-// Handle developer commands
-if (developerCommand) {
-  // Set global flag for loader control in developer mode too
-  global.SHANNON_DISABLE_LOADER = disableLoader;
-
-  await handleDeveloperCommand(developerCommand, nonFlagArgs, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt);
-
-  process.exit(0);
-}
-
-// Handle no arguments - show help
-if (nonFlagArgs.length === 0) {
-  console.log(chalk.red.bold('❌ Error: No arguments provided\n'));
-  showHelp();
-  process.exit(1);
-}
-
-// Handle insufficient arguments
-// In blackbox mode, only WEB_URL is required
-if (blackboxMode) {
-  if (nonFlagArgs.length < 1) {
-    console.log(chalk.red('❌ WEB_URL is required for black-box mode'));
-    console.log(chalk.gray('Usage: ./shannon.mjs --blackbox <WEB_URL> [--config config.yaml]'));
-    console.log(chalk.gray('Help:  ./shannon.mjs --help'));
-    process.exit(1);
-  }
-} else if (nonFlagArgs.length < 2) {
-  console.log(chalk.red('❌ Both WEB_URL and REPO_PATH are required'));
-  console.log(chalk.gray('Usage: ./shannon.mjs <WEB_URL> <REPO_PATH> [--config config.yaml]'));
-  console.log(chalk.gray('       ./shannon.mjs --blackbox <WEB_URL>  (for black-box mode)'));
-  console.log(chalk.gray('Help:  ./shannon.mjs --help'));
-  process.exit(1);
-}
-
-const webUrl = nonFlagArgs[0];
-// In blackbox mode, create output directory based on target domain
-let repoPath = nonFlagArgs[1];
-if (blackboxMode && !repoPath) {
-  const targetDomain = new URL(webUrl).hostname.replace(/[^a-zA-Z0-9.-]/g, '_');
-  repoPath = path.join(process.cwd(), 'repos', targetDomain);
-  console.log(chalk.cyan(`📂 Output directory: ${repoPath}`));
-}
-
-// Validate web URL
-const webUrlValidation = validateWebUrl(webUrl);
-if (!webUrlValidation.valid) {
-  console.log(chalk.red(`❌ Invalid web URL: ${webUrlValidation.error}`));
-  console.log(chalk.gray(`Expected format: https://example.com`));
-  process.exit(1);
-}
-
-// Validate repository path (create if blackbox mode)
-let repoPathValidation;
-if (blackboxMode) {
-  // In blackbox mode, create the directory if it doesn't exist
-  try {
-    await fs.mkdir(repoPath, { recursive: true });
-    repoPathValidation = { valid: true, path: repoPath };
-  } catch (error) {
-    console.log(chalk.red(`❌ Cannot create output directory: ${error.message}`));
-    process.exit(1);
-  }
-} else {
-  repoPathValidation = await validateRepoPath(repoPath);
-  if (!repoPathValidation.valid) {
-    console.log(chalk.red(`❌ Invalid repository path: ${repoPathValidation.error}`));
-    console.log(chalk.gray(`Expected: Accessible local directory path`));
-    process.exit(1);
-  }
-}
-
-// Success - show validated inputs
-console.log(chalk.green('✅ Input validation passed:'));
-console.log(chalk.gray(`   Target Web URL: ${webUrl}`));
-console.log(chalk.gray(`   Target Repository: ${repoPathValidation.path}\n`));
-console.log(chalk.gray(`   Config Path: ${configPath}\n`));
-if (pipelineTestingMode) {
-  console.log(chalk.yellow('⚡ PIPELINE TESTING MODE ENABLED - Using minimal test prompts for fast pipeline validation\n'));
-}
-if (disableLoader) {
-  console.log(chalk.yellow('⚙️  LOADER DISABLED - Progress indicator will not be shown\n'));
-}
-
-// Black-box mode: Auto-detect if source directory is empty or doesn't exist
-let effectiveRepoPath = repoPathValidation.path;
-let isBlackboxMode = blackboxMode;
-
-if (!blackboxMode) {
-  // Check if repo directory is empty or has no meaningful source files
-  try {
-    const repoFiles = await fs.readdir(repoPathValidation.path);
-    const meaningfulFiles = repoFiles.filter(f =>
-      !f.startsWith('.') &&
-      f !== 'node_modules' &&
-      f !== 'deliverables' &&
-      f !== 'repos'
-    );
-
-    if (meaningfulFiles.length === 0) {
-      console.log(chalk.yellow('📂 Source directory appears empty - auto-enabling black-box mode'));
-      isBlackboxMode = true;
-    }
-  } catch (error) {
-    // Directory doesn't exist or can't be read - enable black-box mode
-    console.log(chalk.yellow(`📂 Cannot read source directory (${error.code}) - enabling black-box mode`));
-    isBlackboxMode = true;
-  }
-}
-
-// If black-box mode, run LSG to generate synthetic source
-if (isBlackboxMode) {
-  console.log(chalk.magenta.bold('\n🕵️ BLACK-BOX MODE ENABLED'));
-  console.log(chalk.magenta('   Generating synthetic source from target reconnaissance...\n'));
-
-  try {
-    // Use current directory for output, LSG will create repos/<domain> structure
-    const outputDir = process.cwd();
-    effectiveRepoPath = await generateLocalSource(webUrl, outputDir);
-    console.log(chalk.green(`\n✅ Synthetic source generated at: ${effectiveRepoPath}\n`));
-  } catch (error) {
-    console.log(chalk.red(`\n❌ Black-box reconnaissance failed: ${error.message}`));
-    console.log(chalk.yellow('   Falling back to empty source mode - analysis will be limited.\n'));
-    // Continue with original path, agents will work with what they have
-  }
-}
-
-try {
-  const result = await main(webUrl, effectiveRepoPath, configPath, pipelineTestingMode, disableLoader);
-  console.log(chalk.green.bold('\n📄 FINAL REPORT AVAILABLE:'));
-  console.log(chalk.cyan(result.reportPath));
-  console.log(chalk.green.bold('\n📂 AUDIT LOGS AVAILABLE:'));
-  console.log(chalk.cyan(result.auditLogsPath));
-
-} catch (error) {
-  // Enhanced error boundary with proper logging
-  if (error instanceof PentestError) {
-    await logError(error, 'Main execution failed');
-    console.log(chalk.red.bold('\n🚨 PENTEST EXECUTION FAILED'));
-    console.log(chalk.red(`   Type: ${error.type}`));
-    console.log(chalk.red(`   Retryable: ${error.retryable ? 'Yes' : 'No'}`));
-
-    if (error.retryable) {
-      console.log(chalk.yellow('   Consider running the command again or checking network connectivity.'));
-    }
-  } else {
-    console.log(chalk.red.bold('\n🚨 UNEXPECTED ERROR OCCURRED'));
-    console.log(chalk.red(`   Error: ${error?.message || error?.toString() || 'Unknown error'}`));
-
-    if (process.env.DEBUG) {
-      console.log(chalk.gray(`   Stack: ${error?.stack || 'No stack trace available'}`));
-    }
-  }
-
-  process.exit(1);
-}
+program.parse();
