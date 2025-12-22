@@ -19,7 +19,7 @@ import {
 } from './src/local-source-generator/utils/resilience.js';
 
 // Import core modules
-import { BudgetManager, BudgetExceededError } from './src/core/BudgetManager.js';
+import { BudgetManager } from './src/core/BudgetManager.js';
 import { WorldModel } from './src/core/WorldModel.js';
 
 // Core reconnaissance tools
@@ -123,6 +123,10 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
 
     // Step 1: Network reconnaissance (Shannon-compatible)
     bar.update(0, { status: 'Network Reconnaissance...' });
+    // NOTE: The time budget is enforced via budget.check() *before* each tool invocation.
+    // Long-running tools (nmap, subfinder, etc.) are not cancelled mid-execution if the
+    // budget is exceeded while they are running; they will finish their current run before
+    // the next budget.check() is applied. This is a known limitation.
     budget.check(); // Throws BudgetExceededError if time exceeded
     budget.track('toolInvocations');
     const nmapResults = await runNmap(webUrl);
@@ -204,12 +208,6 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
 
     console.log(chalk.green(`\n✅ Synthetic source generated at: ${sourceDir}`));
     return sourceDir;
-}
-
-// Helper for generating content-based IDs
-function generateContentId(content) {
-    const canonical = JSON.stringify(content, Object.keys(content).sort());
-    return createHash('sha256').update(canonical).digest('hex').substring(0, 16);
 }
 
 // Wrapper for nmap with resilience

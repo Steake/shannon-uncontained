@@ -129,6 +129,17 @@ export class WorldModel {
 
         // Normalize to ensure b + d + u = 1 (handle floating point)
         const sum = b + d + u;
+        
+        // Prevent division by zero or numerical instability
+        if (sum < 1e-10) {
+            // Fallback to maximum uncertainty if normalization fails
+            return {
+                b: 0,
+                d: 0,
+                u: 1,
+                a: this.defaultBaseRate
+            };
+        }
 
         return {
             b: b / sum,
