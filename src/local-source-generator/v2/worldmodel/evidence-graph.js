@@ -1,5 +1,14 @@
 /**
+ * @deprecated Use WorldModel from src/core/WorldModel.js instead.
+ * 
  * EvidenceGraph - Append-only evidence store with content hashing
+ * 
+ * DEPRECATION NOTICE: This module has been unified into WorldModel.
+ * WorldModel now provides:
+ * - EQBSL tensor storage on all evidence
+ * - Evidence indices (evidenceByAgent, evidenceByType, evidenceByTarget)
+ * - Integrated EpistemicLedger for uncertainty tracking
+ * - EVENT_TYPES constant
  * 
  * The EvidenceGraph is the foundation of LSG v2's world model.
  * All observations from tools and agents are recorded as immutable events.
