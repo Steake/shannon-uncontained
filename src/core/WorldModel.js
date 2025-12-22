@@ -2,6 +2,9 @@ import { fs, path } from 'zx';
 import crypto from 'crypto';
 import { EpistemicLedger } from './EpistemicLedger.js';
 
+// Numerical stability threshold for EQBSL tensor normalization
+const MIN_NORMALIZATION_SUM = 1e-10;
+
 /**
  * WorldModel - The central source of truth for the agent's knowledge.
  * 
@@ -131,7 +134,7 @@ export class WorldModel {
         const sum = b + d + u;
         
         // Prevent division by zero or numerical instability
-        if (sum < 1e-10) {
+        if (sum < MIN_NORMALIZATION_SUM) {
             // Fallback to maximum uncertainty if normalization fails
             return {
                 b: 0,

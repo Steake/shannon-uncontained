@@ -190,9 +190,7 @@ async function executePipeline(webUrl, sourceDir, session, distributedConfig, to
                 `Warning: Failed to export world model to "${exportPath}". The pipeline completed, but evidence export may be incomplete.`
             )
         );
-        if (error) {
-            console.warn(chalk.yellow(`World model export error: ${error.stack || error.message || String(error)}`));
-        }
+        console.warn(chalk.yellow(`World model export error: ${error.stack || error.message || String(error)}`));
     }
 }
 
