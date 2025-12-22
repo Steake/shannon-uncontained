@@ -136,4 +136,56 @@ program
     }
   });
 
+// SYNTHESIZE COMMAND (Run AI synthesis on existing world model)
+program
+  .command('synthesize')
+  .alias('synthesise')
+  .description('Run AI synthesis on an existing world model (resume/retry)')
+  .argument('<workspace>', 'Workspace directory containing world-model.json')
+  .option('--framework <name>', 'Target framework (express, fastapi)', 'express')
+  .action(async (workspace, options) => {
+    console.log(chalk.magenta.bold('🤖 AI SYNTHESIS'));
+    console.log(chalk.gray(`Workspace: ${workspace}`));
+    console.log(chalk.gray(`Framework: ${options.framework}`));
+
+    try {
+      const { fs, path } = await import('zx');
+
+      // Find world-model.json
+      const worldModelPath = path.join(workspace, 'world-model.json');
+      if (!await fs.pathExists(worldModelPath)) {
+        throw new Error(`World model not found: ${worldModelPath}`);
+      }
+
+      const worldModelData = JSON.parse(await fs.readFile(worldModelPath, 'utf-8'));
+      console.log(chalk.gray(`  Evidence: ${worldModelData.evidence?.length || 0}`));
+      console.log(chalk.gray(`  Claims: ${worldModelData.claims?.length || 0}`));
+
+      // Import v2 Orchestrator
+      const { createLSGv2 } = await import('./src/local-source-generator/v2/index.js');
+      const orchestrator = createLSGv2({ mode: 'live' });
+
+      // Run synthesis
+      console.log(chalk.blue('\n🔧 Running synthesis agents...'));
+      const result = await orchestrator.runSynthesis(
+        worldModelData,
+        workspace,
+        { framework: options.framework }
+      );
+
+      if (result.success) {
+        console.log(chalk.green(`\n✅ Synthesis complete`));
+        console.log(chalk.gray(`   Files: ${result.files_generated?.length || 0}`));
+      } else {
+        console.log(chalk.yellow('\n⚠️ Some agents failed:'));
+        for (const err of result.errors || []) {
+          console.log(chalk.red(`   - ${err.agent}: ${err.error}`));
+        }
+      }
+    } catch (error) {
+      console.error(chalk.red(`\n❌ Synthesis failed: ${error.message}`));
+      process.exit(1);
+    }
+  });
+
 program.parse();
