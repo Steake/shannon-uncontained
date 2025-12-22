@@ -181,6 +181,9 @@ async function exportHtmlGraph(data, options) {
     let nodes, links;
 
     switch (viewMode) {
+        case 'all':
+            ({ nodes, links } = buildComprehensiveGraph(data));
+            break;
         case 'evidence':
             ({ nodes, links } = buildEvidenceGraph(data));
             break;
@@ -202,6 +205,197 @@ async function exportHtmlGraph(data, options) {
 }
 
 // === GRAPH BUILDERS ===
+
+// === COMPREHENSIVE GRAPH ===
+// Merges all views: agents, evidence, ports, tech, domains, event types, targets
+function buildComprehensiveGraph(data) {
+    const nodesMap = new Map();
+    const links = [];
+
+    // --- 1. AGENTS ---
+    const agents = new Set();
+    data.evidence?.forEach(e => agents.add(e.sourceAgent));
+
+    agents.forEach(agent => {
+        nodesMap.set(`agent_${agent}`, {
+            id: `agent_${agent}`,
+            label: agent,
+            type: 'agent',
+            eqbsl: { b: 0.85, d: 0.03, u: 0.12, a: 0.5 }
+        });
+    });
+
+    // --- 2. EVENT TYPES ---
+    const eventTypes = new Map();
+    data.evidence?.forEach(e => {
+        const eventType = e.content?.type || e.content?.tool || 'observation';
+        if (!eventTypes.has(eventType)) {
+            eventTypes.set(eventType, {
+                id: `eventType_${eventType}`,
+                label: eventType.toUpperCase(),
+                type: 'eventType',
+                count: 0,
+                eqbsl: { b: 0.7, d: 0.1, u: 0.2, a: 0.5 }
+            });
+        }
+        eventTypes.get(eventType).count++;
+    });
+    eventTypes.forEach(node => nodesMap.set(node.id, node));
+
+    // Link agents to event types they produce
+    const agentEventLinks = new Set();
+    data.evidence?.forEach(e => {
+        const eventType = e.content?.type || e.content?.tool || 'observation';
+        const linkKey = `agent_${e.sourceAgent}->eventType_${eventType}`;
+        if (!agentEventLinks.has(linkKey)) {
+            agentEventLinks.add(linkKey);
+            links.push({
+                source: `agent_${e.sourceAgent}`,
+                target: `eventType_${eventType}`,
+                type: 'emits',
+                eqbsl: { b: 0.8, d: 0.05, u: 0.15, a: 0.5 }
+            });
+        }
+    });
+
+    // --- 3. DOMAINS (from subdomains) ---
+    const subdomainEvidence = data.evidence?.find(e => e.content?.tool === 'subfinder');
+    const subdomains = subdomainEvidence?.content?.subdomains || [];
+
+    const domainHubs = new Map();
+    subdomains.forEach(sub => {
+        const prefix = sub.split('.')[0];
+        if (!domainHubs.has(prefix) && prefix.length > 2) {
+            domainHubs.set(prefix, {
+                id: `domain_${prefix}`,
+                label: prefix,
+                type: 'domain',
+                fullDomain: sub,
+                eqbsl: { b: 0.75, d: 0.05, u: 0.2, a: 0.5 }
+            });
+        }
+    });
+    domainHubs.forEach(node => nodesMap.set(node.id, node));
+
+    // Link subfinder event type to domains
+    if (eventTypes.has('subfinder') && domainHubs.size > 0) {
+        domainHubs.forEach((_, prefix) => {
+            links.push({
+                source: 'eventType_subfinder',
+                target: `domain_${prefix}`,
+                type: 'discovered',
+                eqbsl: { b: 0.85, d: 0.03, u: 0.12, a: 0.5 }
+            });
+        });
+    }
+
+    // --- 4. PORTS (from nmap) ---
+    const nmapEvidence = data.evidence?.find(e => e.content?.tool === 'nmap');
+    if (nmapEvidence) {
+        const nmapResult = nmapEvidence.content?.result || '';
+        const ports = nmapResult.match(/(\d+)\/tcp\s+open\s+(\S+)/g) || [];
+
+        ports.forEach(portLine => {
+            const match = portLine.match(/(\d+)\/tcp\s+open\s+(\S+)/);
+            if (match) {
+                const [, port, service] = match;
+                const portNodeId = `port_${port}`;
+
+                nodesMap.set(portNodeId, {
+                    id: portNodeId,
+                    label: `${port}/${service}`,
+                    type: 'port',
+                    eqbsl: { b: 0.95, d: 0.01, u: 0.04, a: 0.5 }
+                });
+
+                // Link nmap event type to port
+                if (eventTypes.has('nmap')) {
+                    links.push({
+                        source: 'eventType_nmap',
+                        target: portNodeId,
+                        type: 'discovered',
+                        eqbsl: { b: 0.98, d: 0.0, u: 0.02, a: 0.5 }
+                    });
+                }
+            }
+        });
+    }
+
+    // --- 5. TARGETS (path categories from endpoints) ---
+    const pathCategories = new Map();
+    data.evidence?.forEach(e => {
+        if (e.content?.path) {
+            const parts = e.content.path.split('/').filter(p => p);
+            if (parts.length > 0) {
+                const category = parts[0];
+                if (!pathCategories.has(category)) {
+                    pathCategories.set(category, {
+                        id: `target_${category}`,
+                        label: `/${category}`,
+                        type: 'target',
+                        count: 0,
+                        eqbsl: { b: 0.6, d: 0.1, u: 0.3, a: 0.5 }
+                    });
+                }
+                pathCategories.get(category).count++;
+            }
+        }
+    });
+
+    // Only add top path categories (>= 3 occurrences)
+    pathCategories.forEach((node, key) => {
+        if (node.count >= 3) {
+            nodesMap.set(node.id, node);
+
+            // Link endpoint event type to target
+            if (eventTypes.has('endpoint')) {
+                links.push({
+                    source: 'eventType_endpoint',
+                    target: node.id,
+                    type: 'reaches',
+                    eqbsl: { b: 0.65, d: 0.1, u: 0.25, a: 0.5 }
+                });
+            }
+        }
+    });
+
+    // --- 6. CLAIMS (from world model claims) ---
+    data.claims?.slice(0, 50).forEach(claim => {
+        const claimId = `claim_${claim.id || claim.subject}`;
+        nodesMap.set(claimId, {
+            id: claimId,
+            label: claim.predicate ? `${claim.subject}:${claim.predicate}`.substring(0, 25) : claim.subject.substring(0, 25),
+            type: 'claim',
+            confidence: claim.confidence,
+            eqbsl: claim.eqbsl || { b: 0.5, d: 0.2, u: 0.3, a: 0.5 }
+        });
+
+        // Link claim to its supporting evidence (if evidence is an agent)
+        if (claim.evidenceIds?.length > 0) {
+            // Find which agent produced the first evidence
+            const firstEvId = claim.evidenceIds[0];
+            const ev = data.evidence?.find(e => e.id === firstEvId);
+            if (ev && nodesMap.has(`agent_${ev.sourceAgent}`)) {
+                links.push({
+                    source: `agent_${ev.sourceAgent}`,
+                    target: claimId,
+                    type: 'claims',
+                    eqbsl: claim.eqbsl || { b: 0.5, d: 0.2, u: 0.3, a: 0.5 }
+                });
+            }
+        }
+    });
+
+    // Calculate EQBSL properties for all links
+    links.forEach(link => {
+        const eqbsl = link.eqbsl || { b: 0.5, d: 0.2, u: 0.3, a: 0.5 };
+        link.expectation = eqbsl.b + (eqbsl.a * eqbsl.u);
+        link.controversy = eqbsl.b * eqbsl.d;
+        link.uncertainty = eqbsl.u;
+    });
+
+    return { nodes: Array.from(nodesMap.values()), links };
+}
 
 function buildTopologyGraph(data) {
     const nodesMap = new Map();
