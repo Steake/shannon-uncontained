@@ -355,13 +355,35 @@ export class Orchestrator extends EventEmitter {
 
             try {
                 const ctx = this.createContext(agent.default_budget);
-                const target = worldModelData.meta?.target || 'unknown';
+
+                // Extract target from meta or evidence
+                let target = worldModelData.meta?.target;
+                if (!target || target === 'unknown') {
+                    // Try to extract from evidence sources
+                    const firstEvidence = worldModelData.evidence?.[0];
+                    const source = firstEvidence?.content?.source || firstEvidence?.content?.url;
+                    if (source) {
+                        try {
+                            const url = new URL(source);
+                            target = `${url.protocol}//${url.hostname}`;
+                        } catch {
+                            // Fallback to workspace directory name
+                            const { path } = await import('zx');
+                            target = `https://${path.basename(outputDir)}`;
+                        }
+                    } else {
+                        // Use workspace directory name
+                        const { path } = await import('zx');
+                        target = `https://${path.basename(outputDir)}`;
+                    }
+                }
 
                 const result = await agent.execute(ctx, {
                     target,
                     outputDir,
                     framework: options.framework,
                 });
+
 
                 results[agentName] = result;
 
