@@ -1,0 +1,52 @@
+
+import chalk from 'chalk';
+import { fs, path } from 'zx';
+
+export async function evidenceCommand(action, workspace, options) {
+    // Load world model from the standard location
+    // The world model is exported as `world-model.json` by WorldModel.export()
+
+    if (!await fs.pathExists(workspace)) {
+        console.error(chalk.red(`Workspace not found: ${workspace}`));
+        process.exit(1);
+    }
+
+    console.log(chalk.blue(`Loading Evidence Graph from ${workspace}...`));
+
+    // Load the world model from the standard export format
+    const worldModelFile = path.join(workspace, 'world-model.json');
+    let data = { evidence: [], claims: [], artifacts: [] };
+
+    if (await fs.pathExists(worldModelFile)) {
+        data = await fs.readJSON(worldModelFile);
+    } else {
+        console.log(chalk.yellow('No world-model.json found, assuming empty workspace.'));
+    }
+
+    if (action === 'stats') {
+        printStats(data);
+    } else if (action === 'export') {
+        // TODO
+        console.log('Export not implemented yet');
+    }
+}
+
+function printStats(data) {
+    console.log(chalk.bold('\n📊 Evidence Graph Stats'));
+    console.log(chalk.gray('─'.repeat(30)));
+    console.log(`Evidence Items:  ${chalk.cyan(data.evidence.length)}`);
+    console.log(`Claims Derived:  ${chalk.green(data.claims.length)}`);
+    console.log(`Artifacts:       ${chalk.yellow(data.artifacts.length)}`);
+    console.log(chalk.gray('─'.repeat(30)));
+
+    // Group by source agent
+    const byAgent = {};
+    data.evidence.forEach(e => {
+        byAgent[e.sourceAgent] = (byAgent[e.sourceAgent] || 0) + 1;
+    });
+
+    console.log(chalk.bold('\nSources:'));
+    Object.entries(byAgent).forEach(([agent, count]) => {
+        console.log(`  ${agent}: ${count}`);
+    });
+}

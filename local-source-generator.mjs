@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import playwright from 'playwright';
 import cliProgress from 'cli-progress';
+import { createHash } from 'node:crypto';
 
 // Import resilience utilities
 import {
@@ -16,6 +17,10 @@ import {
     checkToolsAvailability,
     isRetryableError
 } from './src/local-source-generator/utils/resilience.js';
+
+// Import core modules
+import { BudgetManager } from './src/core/BudgetManager.js';
+import { WorldModel } from './src/core/WorldModel.js';
 
 // Core reconnaissance tools
 const TOOLS = {
@@ -45,8 +50,24 @@ const TOOL_TIMEOUTS = {
 
 
 // Main generator
-export async function generateLocalSource(webUrl, outputDir) {
+export async function generateLocalSource(webUrl, outputDir, options = {}) {
     console.log(chalk.yellow.bold('\n🔍 LOCAL SOURCE GENERATOR'));
+
+    // Extract CLI skip options
+    const {
+        skipRecon = false,
+        skipScreenshots = false,
+        skipTools = false,
+    } = options;
+
+    if (skipRecon || skipScreenshots || skipTools) {
+        const optsSummary = [
+            skipRecon && 'skipRecon',
+            skipScreenshots && 'skipScreenshots',
+            skipTools && 'skipTools',
+        ].filter(Boolean).join(', ');
+        console.log(chalk.gray(`  (Options) ${optsSummary}`));
+    }
 
     // Validate URL
     let parsedUrl;
@@ -67,17 +88,27 @@ export async function generateLocalSource(webUrl, outputDir) {
     await fs.ensureDir(path.join(sourceDir, 'config'));
     await fs.ensureDir(path.join(sourceDir, 'deliverables'));
 
+    // Initialize BudgetManager for resource constraints
+    const budget = new BudgetManager({
+        maxTimeMs: options.timeout || 600000,  // 10 minutes default
+        maxNetworkRequests: options.maxRequests || 0,  // 0 = unlimited
+        maxToolInvocations: options.maxTools || 50  // Max tools to run
+    });
+    console.log(chalk.cyan(`  📊 Budget: ${(budget.limits.maxTimeMs / 60000).toFixed(1)}min timeout, ${budget.limits.maxToolInvocations} max tools`));
+
     // Check tool availability
-    const requiredTools = ['nmap', 'subfinder', 'whatweb', 'gau', 'katana'];
+    const requiredTools = skipTools ? [] : ['nmap', 'subfinder', 'whatweb', 'gau', 'katana'];
     const toolStatus = await checkToolsAvailability(requiredTools);
 
     const availableTools = Object.entries(toolStatus).filter(([_, available]) => available).map(([name]) => name);
     const missingTools = Object.entries(toolStatus).filter(([_, available]) => !available).map(([name]) => name);
 
-    if (missingTools.length > 0) {
+    if (missingTools.length > 0 && !skipTools) {
         console.log(chalk.yellow(`  ⚠️  Missing tools (will skip): ${missingTools.join(', ')}`));
     }
-    console.log(chalk.blue(`  🔧 Available tools: ${availableTools.join(', ') || 'none'}`));
+    if (!skipTools) {
+        console.log(chalk.blue(`  🔧 Available tools: ${availableTools.join(', ') || 'none'}`));
+    }
 
     // Initialize Progress Bar
     const bar = new cliProgress.SingleBar({
@@ -92,16 +123,29 @@ export async function generateLocalSource(webUrl, outputDir) {
 
     // Step 1: Network reconnaissance (Shannon-compatible)
     bar.update(0, { status: 'Network Reconnaissance...' });
+    // NOTE: The time budget is enforced via budget.check() *before* each tool invocation.
+    // Long-running tools (nmap, subfinder, etc.) are not cancelled mid-execution if the
+    // budget is exceeded while they are running; they will finish their current run before
+    // the next budget.check() is applied. This is a known limitation.
+    budget.check(); // Throws BudgetExceededError if time exceeded
+    budget.track('toolInvocations');
     const nmapResults = await runNmap(webUrl);
 
     bar.update(1, { status: 'Domain & Tech Recon...' });
+    budget.check();
+    budget.track('toolInvocations');
     const subfinderResults = await runSubfinder(targetDomain);
+    budget.track('toolInvocations');
     const whatwebResults = await runWhatweb(webUrl);
 
     // Step 2: Active crawling
     bar.update(2, { status: 'Active Crawling & Analysis...' });
+    budget.check();
+    budget.track('toolInvocations');
     const endpoints = await discoverEndpoints(webUrl);
+    budget.track('toolInvocations');
     const jsFiles = await extractJavaScriptFiles(webUrl);
+    budget.track('toolInvocations');
     const apiSchemas = await discoverAPISchemas(webUrl);
 
     // Step 3: Generate synthetic source files
@@ -123,6 +167,44 @@ export async function generateLocalSource(webUrl, outputDir) {
 
     bar.update(5, { status: 'Done!' });
     bar.stop();
+
+    // Create WorldModel with collected evidence using proper EQBSL tensors
+    console.log(chalk.blue('  📊 Creating World Model with EQBSL tensors...'));
+    const worldModel = new WorldModel(sourceDir);
+    await worldModel.init();
+
+    // Add evidence from recon tools
+    if (nmapResults && nmapResults !== 'Nmap scan skipped or failed') {
+        worldModel.addEvidence({ tool: 'nmap', result: nmapResults }, 'NetRecon');
+    }
+
+    if (subfinderResults && subfinderResults !== 'Subfinder skipped or failed') {
+        const subdomains = subfinderResults.split('\n').filter(s => s.trim());
+        worldModel.addEvidence({ tool: 'subfinder', subdomains }, 'SubdomainHunter');
+    }
+
+    if (whatwebResults && whatwebResults !== 'Whatweb skipped or failed') {
+        worldModel.addEvidence({ tool: 'whatweb', result: whatwebResults }, 'TechFingerprinter');
+    }
+
+    // Add endpoints as evidence with claims
+    endpoints.forEach((ep) => {
+        const evId = worldModel.addEvidence({ type: 'endpoint', ...ep }, 'Crawler');
+        worldModel.addClaim(ep.path, 'discovered', { method: ep.method, params: ep.params.length }, 0.9, [evId]);
+    });
+
+    // Add JS analysis as evidence
+    jsFiles.forEach((js) => {
+        worldModel.addEvidence({ type: 'javascript', ...js }, 'JSHarvester');
+    });
+
+    // Add artifacts
+    worldModel.addArtifact('deliverables/code_analysis_deliverable.md', 'report');
+
+    // Export world model (now includes EQBSL tensors on all evidence and claims)
+    const worldModelPath = await worldModel.export();
+    console.log(chalk.green(`  ✅ World Model saved with EQBSL tensors: ${worldModelPath}`));
+    console.log(chalk.gray(`     Evidence: ${worldModel.evidence.size}, Claims: ${worldModel.claims.size}`));
 
     console.log(chalk.green(`\n✅ Synthetic source generated at: ${sourceDir}`));
     return sourceDir;
@@ -601,7 +683,7 @@ ${chalk.bold('Examples:')}
 `);
 }
 
-// Main execution if run directly
+// Main execution if run directly (Guard for import)
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (argv.help || argv.h) {
         printHelp();
