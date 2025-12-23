@@ -118,9 +118,39 @@ export class Orchestrator extends EventEmitter {
         // Emit start event
         this.emit('agent:start', { agent: agentName, inputs });
 
+        // Create checkpoint before execution (if git is enabled)
+        if (inputs.outputDir) {
+            try {
+                const { createGitCheckpoint } = await import('../../../utils/git-manager.js');
+                await createGitCheckpoint(inputs.outputDir, `Before ${agentName}`, 1);
+            } catch (e) {
+                console.warn(`[Orchestrator] Failed to create start checkpoint: ${e.message}`);
+            }
+        }
+
         // Create context and execute
         const ctx = this.createContext(options.budget || agent.default_budget);
-        const result = await agent.execute(ctx, inputs);
+
+        let result;
+        try {
+            result = await agent.execute(ctx, inputs);
+        } catch (execError) {
+            result = { success: false, error: execError.message };
+        }
+
+        // Handle success/failure with git callbacks
+        if (inputs.outputDir) {
+            try {
+                const { commitGitSuccess, rollbackGitWorkspace } = await import('../../../utils/git-manager.js');
+                if (result.success) {
+                    await commitGitSuccess(inputs.outputDir, agentName);
+                } else {
+                    await rollbackGitWorkspace(inputs.outputDir, `${agentName} failure`);
+                }
+            } catch (e) {
+                console.warn(`[Orchestrator] Git state management failed: ${e.message}`);
+            }
+        }
 
         // Cache successful results
         if (result.success && this.options.enableCaching) {
@@ -178,10 +208,20 @@ export class Orchestrator extends EventEmitter {
 
         const results = {};
         const errors = [];
+        const excludeList = inputs.excludeAgents || [];
+
+        // Filter valid agents for this stage
+        const agentsToRun = stage.agents.filter(agentName => {
+            if (excludeList.includes(agentName)) {
+                this.emit('agent:skip', { agent: agentName, reason: 'excluded_or_completed' });
+                return false;
+            }
+            return true;
+        });
 
         if (stage.parallel) {
             // Execute agents in parallel
-            const promises = stage.agents.map(async (agentName) => {
+            const promises = agentsToRun.map(async (agentName) => {
                 try {
                     const result = await this.executeAgent(agentName, inputs);
                     results[agentName] = result;
@@ -196,7 +236,7 @@ export class Orchestrator extends EventEmitter {
             await Promise.all(promises);
         } else {
             // Execute agents sequentially
-            for (const agentName of stage.agents) {
+            for (const agentName of agentsToRun) {
                 if (this.aborted) break;
 
                 try {
@@ -325,12 +365,90 @@ export class Orchestrator extends EventEmitter {
 
         this.emit('pipeline:init', { target, outputDir, stages: pipeline.length });
 
+        // RESUMABILITY: Load existing state if available
+        if (outputDir) {
+            const { fs, path } = await import('zx');
+            const stateFile = path.join(outputDir, 'world-model.json');
+            const logFile = path.join(outputDir, 'execution-log.json');
+
+            if (await fs.pathExists(stateFile)) {
+                try {
+                    console.log(`[Orchestrator] Resuming: Loading world-model.json from ${outputDir}`);
+                    const state = await fs.readJSON(stateFile);
+                    this.importState(state);
+                } catch (e) {
+                    console.warn(`[Orchestrator] Failed to load existing world model: ${e.message}`);
+                }
+            }
+
+            if (await fs.pathExists(logFile)) {
+                try {
+                    console.log(`[Orchestrator] Resuming: Loading execution-log.json`);
+                    const oldLog = await fs.readJSON(logFile);
+                    // Hydrate cache with successful executions to skip re-running
+                    for (const entry of oldLog) {
+                        if (entry.success) {
+                            // Reconstruct partial cache key based on inputs available in log? 
+                            // Actually, better to just let the idempotency logic handle it if they match EXACTLY.
+                            // But for simple "skip if done" logic:
+
+                            // We can manually mark agent as completed in a set to check against.
+                            // But the easiest way is to push to executionLog and let `executedAgents` tracking logic work 
+                            // if we had one. 
+
+                            // Better approach: Populate cache with a "dummy" success for the agent name?
+                            // No, because inputs might differ. 
+
+                            // Current design relies on `idempotencyKey` which needs inputs.
+                            // If we don't have original inputs, we can't perfectly cache-hit.
+
+                            // However, strictly for pipeline resumption, we can assume inputs are constant for a run.
+                        }
+                    }
+                    // Current simplified approach: just keep the log for history
+                    this.executionLog = oldLog;
+                } catch (e) {
+                    console.warn(`[Orchestrator] Failed to load execution log: ${e.message}`);
+                }
+            }
+        }
+
         // Create initial inputs
         const inputs = {
             target,
             outputDir,
             framework: options.framework || 'express',
+            ...options // Pass through all options including msfrpcConfig
         };
+
+        // Resumability part 2:
+        // We need a way to tell the pipeline stages to SKIP agents that are already "done".
+        // The most robust way without perfect input reconstruction is to check executionLog 
+        // for `agent` names that succeeded recently? 
+
+        // For now, relies on standard caching if inputs reconstruct same unique key.
+        // OR explicit excludes.
+
+        if (this.executionLog.length > 0) {
+            // Find agents that succeeded
+            const completedAgents = new Set(this.executionLog.filter(e => e.success).map(e => e.agent));
+
+            // Filter excludeAgents to include already completed ones
+            if (!options.excludeAgents) options.excludeAgents = [];
+
+            // Log what we found
+            this.emit('resumed', { completed: completedAgents.size, agents: Array.from(completedAgents) });
+
+            // Auto-exclude completed agents to prevent re-execution
+            // This enables true "resume" behavior
+            if (options.resume !== false) { // Default to true unless explicitly disabled
+                completedAgents.forEach(agent => {
+                    if (!options.excludeAgents.includes(agent)) {
+                        options.excludeAgents.push(agent);
+                    }
+                });
+            }
+        }
 
         // Execute full pipeline
         const result = await this.executePipeline(pipeline, inputs);
