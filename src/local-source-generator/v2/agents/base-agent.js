@@ -101,16 +101,12 @@ export class AgentContext extends EventEmitter {
    * @param {string} status - Status message
    */
   setStatus(status) {
-    // Assuming 'emit' method will be provided by an EventEmitter base class or similar mechanism
-    // For now, we'll log it or store it if no EventEmitter is present.
-    // If this context is intended to be an EventEmitter, it should extend EventEmitter.
+    // Emit status event if emitter is available, otherwise silently store it
     if (typeof this.emit === 'function') {
       this.emit('status', status);
-    } else {
-      console.log(`Agent Status: ${status}`);
-      // Optionally store status if no emitter is available
-      // this.currentStatus = status;
     }
+    // Don't log to console - it breaks MultiBar UI
+    this.currentStatus = status;
   }
 
   /**
@@ -154,7 +150,8 @@ export class AgentContext extends EventEmitter {
    * Log message (compatibility)
    */
   log(msg) {
-    console.log(msg);
+    // Silenced - would break MultiBar UI
+    // Use this.emit('log', msg) if logging is needed
   }
 }
 
@@ -302,9 +299,8 @@ export class BaseAgent {
   setStatus(status) {
     if (this.ctx) {
       this.ctx.setStatus(status);
-    } else {
-      console.log(`[${this.name}] ${status}`);
     }
+    // Silenced - would break MultiBar UI
   }
 
   getContract() {

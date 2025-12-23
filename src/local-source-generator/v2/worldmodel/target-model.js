@@ -231,6 +231,81 @@ export class TargetModel {
                 }
             }
         }
+
+        // Process HTTP responses as endpoints (crawled URLs)
+        const httpEvents = evidenceGraph.getEventsByType('http_response');
+        for (const event of httpEvents) {
+            const { url, status_code, method } = event.payload;
+            if (url && status_code && status_code < 400) {
+                try {
+                    const parsedUrl = new URL(url);
+                    const path = parsedUrl.pathname + parsedUrl.search;
+                    const endpointId = `endpoint:${method || 'GET'}:${path}`;
+                    if (!this.entities.has(endpointId)) {
+                        this.addEntity({
+                            id: endpointId,
+                            entity_type: ENTITY_TYPES.ENDPOINT,
+                            attributes: {
+                                method: method || 'GET',
+                                path,
+                                source: 'crawler',
+                                status_code,
+                                evidence_refs: [event.id],
+                            },
+                            claim_refs: [],
+                        });
+                    }
+                } catch { /* Invalid URL, skip */ }
+            }
+        }
+
+        // Process OpenAPI fragments for structured endpoints
+        const openapiEvents = evidenceGraph.getEventsByType('openapi_fragment');
+        for (const event of openapiEvents) {
+            const { paths } = event.payload;
+            if (paths && typeof paths === 'object') {
+                for (const [path, methods] of Object.entries(paths)) {
+                    for (const method of Object.keys(methods)) {
+                        const endpointId = `endpoint:${method.toUpperCase()}:${path}`;
+                        if (!this.entities.has(endpointId)) {
+                            this.addEntity({
+                                id: endpointId,
+                                entity_type: ENTITY_TYPES.ENDPOINT,
+                                attributes: {
+                                    method: method.toUpperCase(),
+                                    path,
+                                    source: 'openapi',
+                                    evidence_refs: [event.id],
+                                },
+                                claim_refs: [],
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Process subdomain discoveries as services
+        const subdomainEvents = evidenceGraph.getEventsByType('dns_record');
+        for (const event of subdomainEvents) {
+            const { subdomain, ip } = event.payload;
+            if (subdomain) {
+                const serviceId = `service:${subdomain}`;
+                if (!this.entities.has(serviceId)) {
+                    this.addEntity({
+                        id: serviceId,
+                        entity_type: ENTITY_TYPES.SERVICE,
+                        attributes: {
+                            name: subdomain,
+                            ip,
+                            source: 'subdomain_scan',
+                            evidence_refs: [event.id],
+                        },
+                        claim_refs: [],
+                    });
+                }
+            }
+        }
     }
 
     /**
