@@ -78,11 +78,21 @@ export class NetReconAgent extends BaseAgent {
 
         ctx.recordToolInvocation();
 
-        // Build nmap command
         const ports = inputs.ports || '21,22,23,25,53,80,110,143,443,445,993,995,3306,3389,5432,8080,8443';
         const flags = inputs.aggressive ? '-A' : '-sV';
-        this.setStatus(`Scanning ${hostname} (nmap ${flags})...`);
-        let command = `nmap ${flags} -p ${ports} --open ${hostname}`;
+
+        // Try to use the good nmap if available
+        let nmapBin = 'nmap';
+        try {
+            const brewPath = '/usr/local/Cellar/nmap/7.95_1/bin/nmap';
+            const { fs } = await import('zx');
+            if (await fs.pathExists(brewPath)) {
+                nmapBin = brewPath;
+            }
+        } catch (e) { }
+
+        this.setStatus(`Scanning ${hostname} (${nmapBin} ${flags})...`);
+        let command = `${nmapBin} ${flags} -p ${ports} --open ${hostname}`;
 
         // Run nmap
         let result = await runToolWithRetry(command, {
