@@ -1,0 +1,27 @@
+🔍 LOCAL SOURCE GENERATOR
+Target: https://REDACTED_DOMAIN
+Output: ./shannon-results
+AI Synthesis: enabled
+
+🔍 LOCAL SOURCE GENERATOR v2
+  ✅ Target URL validated: REDACTED_DOMAIN
+
+🔧 Checking tool availability...
+  ✅ nmap                 - available
+  ✅ subfinder            - available
+  ✅ whatweb              - available
+  ✅ httpx                - available
+  ✅ katana               - available
+  ✅ gau                  - available
+  ✅ nuclei               - available
+  ✅ sqlmap               - available
+  ✅ feroxbuster          - available
+  ✅ ffuf                 - available
+  ✅ msfrpcd              - available
+  ✅ msfconsole           - available
+
+🚀 Initializing LSGv2 Pipeline...
+[Orchestrator] Resuming: Loading world-model.json from shannon-results/repos/REDACTED_DOMAIN
+[Orchestrator] Resuming: Loading execution-log.json
+
+⚡ Stage: RECON
