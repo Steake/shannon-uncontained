@@ -76,7 +76,9 @@ export class NetReconAgent extends BaseAgent {
                 }
 
                 // Verify it supports NSE (critical requirement)
-                await execFileAsync(bin, ['-V']);
+                // We test by asking for help on a standard script. This forces the NSE engine to initialize.
+                // If the engine is broken (missing nse_main.lua), this command will fail.
+                await execFileAsync(bin, ['--script-help', 'banner']);
 
                 return bin;
             } catch (e) {
