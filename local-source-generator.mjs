@@ -111,8 +111,18 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
 
     // Run full pipeline
     try {
+        const msfrpcConfig = options.noMsf ? null : {
+            host: options.msfHost || '127.0.0.1',
+            port: options.msfPort || 55553,
+            user: options.msfUser || 'msf',
+            password: options.msfPass || 'msf',
+            autoStart: true
+        };
+
         const result = await orchestrator.runFullPipeline(webUrl, sourceDir, {
             framework: options.framework || 'express',
+            msfrpcConfig, // Pass to all agents in inputs
+            excludeAgents: options.noMsf ? ['MetasploitRecon', 'MetasploitExploit'] : []
         });
 
         bar.update(100, { stage: 'Complete!' });
@@ -171,6 +181,13 @@ ${chalk.bold('Options:')}
   --verbose, -v     Show detailed agent output
   --quiet, -q       Suppress non-essential output
 
+${chalk.bold('Metasploit Options:')}
+  --no-msf          Disable Metasploit integration
+  --msf-host        RPC host (default: 127.0.0.1)
+  --msf-port        RPC port (default: 55553)
+  --msf-user        RPC user (default: msf)
+  --msf-pass        RPC password (default: msf)
+
 ${chalk.bold('Pipeline Stages:')}
   1. Recon       - 9 agents (nmap, subfinder, crawler, etc.)
   2. Analysis    - 7 agents (architecture, auth, vuln hypothesis, etc.)
@@ -212,6 +229,21 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (parallelIdx !== -1 && args[parallelIdx + 1]) {
         options.parallel = parseInt(args[parallelIdx + 1]);
     }
+
+    // Metasploit Flags
+    const msfHostIdx = args.indexOf('--msf-host');
+    if (msfHostIdx !== -1 && args[msfHostIdx + 1]) options.msfHost = args[msfHostIdx + 1];
+
+    const msfPortIdx = args.indexOf('--msf-port');
+    if (msfPortIdx !== -1 && args[msfPortIdx + 1]) options.msfPort = parseInt(args[msfPortIdx + 1]);
+
+    const msfUserIdx = args.indexOf('--msf-user');
+    if (msfUserIdx !== -1 && args[msfUserIdx + 1]) options.msfUser = args[msfUserIdx + 1];
+
+    const msfPassIdx = args.indexOf('--msf-pass');
+    if (msfPassIdx !== -1 && args[msfPassIdx + 1]) options.msfPass = args[msfPassIdx + 1];
+
+    if (args.includes('--no-msf')) options.noMsf = true;
 
     if (options.help) {
         printHelp();

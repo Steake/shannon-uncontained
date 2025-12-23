@@ -115,6 +115,11 @@ program
   .option('--timeout <ms>', 'Global timeout for tools in ms', parseInt)
   .option('--no-ai', 'Skip AI-powered code synthesis (recon only)')
   .option('--framework <name>', 'Target framework for synthesis (express, fastapi)', 'express')
+  .option('--no-msf', 'Disable Metasploit integration')
+  .option('--msf-host <host>', 'Metasploit RPC host')
+  .option('--msf-port <port>', 'Metasploit RPC port', parseInt)
+  .option('--msf-user <user>', 'Metasploit RPC user')
+  .option('--msf-pass <pass>', 'Metasploit RPC password')
   .action(async (target, options) => {
     const { generateLocalSource } = await import('./local-source-generator.mjs');
 
@@ -130,6 +135,11 @@ program
         timeout: options.timeout,
         enableAI: options.ai !== false,
         framework: options.framework,
+        noMsf: !options.msf, // Configured via --no-msf
+        msfHost: options.msfHost,
+        msfPort: options.msfPort,
+        msfUser: options.msfUser,
+        msfPass: options.msfPass
       });
       console.log(chalk.green(`\n✅ Local source generated at: ${result}`));
     } catch (error) {
