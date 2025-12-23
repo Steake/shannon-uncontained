@@ -131,13 +131,16 @@ export const createGitCheckpoint = async (sourceDir, description, attempt) => {
     // Create commit with retry logic
     await executeGitCommandWithRetry(['git', 'commit', '-m', `📍 Checkpoint: ${description} (attempt ${attempt})`, '--allow-empty'], sourceDir, 'creating commit');
 
-    if (hasChanges) {
-      if (isVerbose) console.log(chalk.blue(`    ✅ Checkpoint created with uncommitted changes staged`));
-    } else {
-      if (isVerbose) console.log(chalk.blue(`    ✅ Empty checkpoint created (no workspace changes)`));
+    if (isVerbose) {
+      if (hasChanges) {
+        console.log(chalk.blue(`    ✅ Checkpoint created with uncommitted changes staged`));
+      } else {
+        console.log(chalk.blue(`    ✅ Empty checkpoint created (no workspace changes)`));
+      }
     }
     return { success: true };
   } catch (error) {
+    // Always log errors
     console.log(chalk.yellow(`    ⚠️ Checkpoint creation failed after retries: ${error.message}`));
     return { success: false, error };
   }
@@ -157,17 +160,20 @@ export const commitGitSuccess = async (sourceDir, description) => {
     // Create success commit with retry logic
     await executeGitCommandWithRetry(['git', 'commit', '-m', `✅ ${description}: completed successfully`, '--allow-empty'], sourceDir, 'creating success commit');
 
-    if (changes.length > 0) {
-      console.log(chalk.green(`    ✅ Success commit created with ${changes.length} file changes:`));
-      changes.slice(0, 5).forEach(change => console.log(chalk.gray(`       ${change}`)));
-      if (changes.length > 5) {
-        console.log(chalk.gray(`       ... and ${changes.length - 5} more files`));
+    if (isVerbose) {
+      if (changes.length > 0) {
+        console.log(chalk.green(`    ✅ Success commit created with ${changes.length} file changes:`));
+        changes.slice(0, 5).forEach(change => console.log(chalk.gray(`       ${change}`)));
+        if (changes.length > 5) {
+          console.log(chalk.gray(`       ... and ${changes.length - 5} more files`));
+        }
+      } else {
+        console.log(chalk.green(`    ✅ Empty success commit created (agent made no file changes)`));
       }
-    } else {
-      if (isVerbose) console.log(chalk.green(`    ✅ Empty success commit created (agent made no file changes)`));
     }
     return { success: true };
   } catch (error) {
+    // Always log errors
     console.log(chalk.yellow(`    ⚠️ Success commit failed after retries: ${error.message}`));
     return { success: false, error };
   }
