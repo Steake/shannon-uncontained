@@ -255,6 +255,7 @@ export class BaseAgent {
 
     // Start tracking
     ctx.start();
+    this.ctx = ctx; // Allow access to context from instance methods
 
     try {
       // Run agent
@@ -294,6 +295,18 @@ export class BaseAgent {
    * Get agent contract (for documentation/introspection)
    * @returns {object} Agent contract
    */
+  /**
+   * Set agent status (proxies to context)
+   * @param {string} status - Status message
+   */
+  setStatus(status) {
+    if (this.ctx) {
+      this.ctx.setStatus(status);
+    } else {
+      console.log(`[${this.name}] ${status}`);
+    }
+  }
+
   getContract() {
     return {
       name: this.name,
