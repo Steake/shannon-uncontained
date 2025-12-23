@@ -99,6 +99,8 @@ export class NetReconAgent extends BaseAgent {
             timeout: getToolTimeout('nmap'),
         });
 
+        console.error('DEBUG NETRECON RESULT:', JSON.stringify({ success: result.success, exitCode: result.exitCode, stderr: result.stderr }, null, 2));
+
         // FALLBACK: If nmap fails due to missing NSE scripts (common on some installs), try without version detection
         if (!result.success && (result.stderr?.includes('nse_main.lua') || result.error?.includes('nse_main.lua'))) {
             const fallbackCommand = `nmap -p ${ports} --open ${hostname}`;
