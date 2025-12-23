@@ -44,6 +44,7 @@ export const EXPRESS_SCAFFOLD = {
     "morgan": "^1.10.0",
     "dotenv": "^16.3.1"${config.auth?.mechanism === 'jwt' ? ',\n    "jsonwebtoken": "^9.0.2",\n    "bcryptjs": "^2.4.3"' : ''}
   },
+  "devDependencies": {
     "nodemon": "^3.0.2",
     "jest": "^29.7.0",
     "supertest": "^6.3.3",
