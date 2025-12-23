@@ -56,8 +56,6 @@ export class NetReconAgent extends BaseAgent {
     }
 
     async resolveNmap() {
-        const { appendFile } = await import('node:fs/promises'); // Dynamic import to be safe
-        await appendFile('debug-trace.txt', 'DEBUG: resolving nmap...\n');
         const candidates = [
             'nmap', // PATH
             '/usr/local/bin/nmap', // Intel Mac / Linux
@@ -85,8 +83,6 @@ export class NetReconAgent extends BaseAgent {
 
                 return bin;
             } catch (e) {
-                const { appendFile } = await import('node:fs/promises');
-                await appendFile('debug-trace.txt', `DEBUG: candidate ${bin} failed: ${e.message}\n`);
                 // continue
             }
         }
