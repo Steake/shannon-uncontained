@@ -10,6 +10,7 @@ import { APIDiscovererAgent } from './api-discoverer-agent.js';
 import { SubdomainHunterAgent } from './subdomain-hunter-agent.js';
 import { ContentDiscoveryAgent } from './content-discovery-agent.js';
 import { SecretScannerAgent } from './secret-scanner-agent.js';
+import { WAFDetector } from './waf-detector-agent.js';
 
 export {
     NetReconAgent,
@@ -19,7 +20,8 @@ export {
     APIDiscovererAgent,
     SubdomainHunterAgent,
     ContentDiscoveryAgent,
-    SecretScannerAgent
+    SecretScannerAgent,
+    WAFDetector
 };
 
 /**
@@ -35,5 +37,6 @@ export function registerReconAgents(orchestrator) {
     orchestrator.registerAgent(new SubdomainHunterAgent());
     orchestrator.registerAgent(new ContentDiscoveryAgent());
     orchestrator.registerAgent(new SecretScannerAgent());
+    orchestrator.registerAgent(new WAFDetector());
 }
 
