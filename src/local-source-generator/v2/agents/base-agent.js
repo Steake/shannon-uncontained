@@ -11,11 +11,12 @@
  */
 
 import { createHash } from 'crypto';
+import { EventEmitter } from 'events';
 
 /**
  * Agent execution context
  */
-export class AgentContext {
+export class AgentContext extends EventEmitter {
   constructor({
     evidenceGraph,
     targetModel,
@@ -24,6 +25,7 @@ export class AgentContext {
     config = {},
     budget = {},
   }) {
+    super();
     this.evidenceGraph = evidenceGraph;
     this.targetModel = targetModel;
     this.ledger = ledger;
