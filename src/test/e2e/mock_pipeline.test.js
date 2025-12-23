@@ -107,7 +107,7 @@ describe('System E2E: Full Pipeline Mock', () => {
         assert.ok(events.some(e => e.type === 'vuln_hypothesis'), 'Should have vuln hypothesis');
 
         // Verify ledger flow
-        const claims = orchestrator.ledger.getClaims();
+        const claims = Array.from(orchestrator.ledger.claims.values());
         assert.ok(claims.some(c => c.predicate.name === 'sqli'), 'Should have confirmed SQLi claim');
     });
 });
