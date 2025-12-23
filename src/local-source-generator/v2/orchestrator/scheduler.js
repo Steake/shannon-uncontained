@@ -315,8 +315,8 @@ export class Orchestrator extends EventEmitter {
         return [
             // Phase 1: Reconnaissance
             new PipelineStage('recon', [
-                'OpenAPIDiscoveryAgent', // New: Auto-detect API specs
-                'SitemapAgent',          // New: Sitemap/robots.txt mining
+                'OpenAPIDiscoveryAgent', // Auto-detect API specs
+                'SitemapAgent',          // Sitemap/robots.txt mining
                 'NetReconAgent',
                 'SubdomainHunterAgent',
                 'TechFingerprinterAgent',
@@ -326,7 +326,8 @@ export class Orchestrator extends EventEmitter {
                 'ContentDiscoveryAgent',
                 'SecretScannerAgent',
                 'WAFDetector',
-                'CORSProbeAgent',        // New: CORS method discovery
+                'CORSProbeAgent',        // CORS method discovery
+                'BrowserCrawlerAgent',   // Stealth browser crawl
                 'MetasploitRecon',
             ], { parallel: true, required: false }),
 

@@ -14,6 +14,7 @@ import { WAFDetector } from './waf-detector-agent.js';
 import { OpenAPIDiscoveryAgent } from './openapi-discovery-agent.js';
 import { SitemapAgent } from './sitemap-agent.js';
 import { CORSProbeAgent } from './cors-probe-agent.js';
+import { BrowserCrawlerAgent } from './browser-crawler-agent.js';
 
 export {
     NetReconAgent,
@@ -27,7 +28,8 @@ export {
     WAFDetector,
     OpenAPIDiscoveryAgent,
     SitemapAgent,
-    CORSProbeAgent
+    CORSProbeAgent,
+    BrowserCrawlerAgent
 };
 
 /**
@@ -35,8 +37,8 @@ export {
  * @param {Orchestrator} orchestrator - Orchestrator instance
  */
 export function registerReconAgents(orchestrator) {
-    orchestrator.registerAgent(new OpenAPIDiscoveryAgent()); // New: API spec detection
-    orchestrator.registerAgent(new SitemapAgent());          // New: Sitemap mining
+    orchestrator.registerAgent(new OpenAPIDiscoveryAgent()); // API spec detection
+    orchestrator.registerAgent(new SitemapAgent());          // Sitemap mining
     orchestrator.registerAgent(new NetReconAgent());
     orchestrator.registerAgent(new CrawlerAgent());
     orchestrator.registerAgent(new TechFingerprinterAgent());
@@ -46,5 +48,6 @@ export function registerReconAgents(orchestrator) {
     orchestrator.registerAgent(new ContentDiscoveryAgent());
     orchestrator.registerAgent(new SecretScannerAgent());
     orchestrator.registerAgent(new WAFDetector());
-    orchestrator.registerAgent(new CORSProbeAgent());        // New: CORS method discovery
+    orchestrator.registerAgent(new CORSProbeAgent());        // CORS method discovery
+    orchestrator.registerAgent(new BrowserCrawlerAgent());   // Stealth browser crawl
 }

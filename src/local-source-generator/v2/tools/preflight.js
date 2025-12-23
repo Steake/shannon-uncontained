@@ -330,6 +330,52 @@ export function printPreflightResults(results, verbose = false) {
 }
 
 /**
+ * Check LLM API key availability and print warning if missing
+ * @returns {object} LLM status with provider and warning
+ */
+export function checkLLMConfig() {
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const llmKey = process.env.LLM_API_KEY;
+    const llmProvider = process.env.LLM_PROVIDER;
+
+    const hasKey = !!(anthropicKey || openaiKey || llmKey);
+
+    return {
+        hasKey,
+        provider: llmProvider || (anthropicKey ? 'anthropic' : (openaiKey ? 'openai' : null)),
+        anthropicKey: !!anthropicKey,
+        openaiKey: !!openaiKey,
+        llmKey: !!llmKey,
+    };
+}
+
+/**
+ * Print LLM configuration warning if no API keys are set
+ */
+export function printLLMWarning() {
+    const llmConfig = checkLLMConfig();
+
+    if (!llmConfig.hasKey) {
+        console.log('\n' + '⚠'.repeat(25));
+        console.log('⚠️  WARNING: No LLM API key configured!');
+        console.log('   AI-powered synthesis will be DISABLED.');
+        console.log('   Generated code quality will be significantly degraded.');
+        console.log('');
+        console.log('   Set one of the following environment variables:');
+        console.log('     export ANTHROPIC_API_KEY=sk-...');
+        console.log('     export OPENAI_API_KEY=sk-...');
+        console.log('     export LLM_API_KEY=...');
+        console.log('⚠'.repeat(25) + '\n');
+        return false;
+    } else {
+        const provider = llmConfig.provider || 'auto-detected';
+        console.log(`  ✅ LLM configured (${provider})`);
+        return true;
+    }
+}
+
+/**
  * Get installation instructions for missing tools
  */
 export function getInstallInstructions(results, platform = 'macos') {
