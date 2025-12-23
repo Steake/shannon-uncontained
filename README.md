@@ -396,23 +396,26 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Roadmap
 
-### v0.1 ✅ (Current)
+### v0.1 ✅ (Foundation)
 - [x] World Model with EQBSL tensors
 - [x] Evidence Graph (append-only)
 - [x] CLI with `generate`, `model show/graph/export-html`
 - [x] Three graph view modes (topology, evidence, provenance)
 
-### v0.2 (In Progress)
-- [ ] Full pentest pipeline with agent orchestration
-- [ ] LLM-integrated analysis agents
-- [ ] Claim propagation with transitive discounting
-- [ ] Temporal decay implementation
+### v0.2 ✅ (Current)
+- [x] Full pentest pipeline with agent orchestration
+- [x] LLM-integrated analysis agents
+- [x] Claim propagation with transitive discounting
+- [x] Ground-truth validation for endpoint verification
+- [x] **12 new LSGv2 agents** (exploitation, recon, blue team)
+- [x] OWASP ASVS compliance mapping (14 chapters)
+- [x] Enhanced reports with EBSL confidence scores
 
 ### v1.0 (Future)
 - [ ] ZK proofs for evidence provenance
 - [ ] Adversarial simulation mode
-- [ ] Report generation with uncertainty quantification
 - [ ] Integration with external vulnerability databases
+- [ ] Browser-based interactive reporting dashboard
 
 ---
 

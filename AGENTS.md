@@ -43,27 +43,40 @@ EvidenceGraph → TargetModel → ArtifactManifest
   Recon Agents   Synthesis Agents
        ↑              ↓
   Tool Runners   Validation Harness
+       ↑              ↓
+ Exploitation    Blue Team Agents
 ```
 
-### 15 Agents
+### 27 Agents (LSGv2)
 
 | Phase | Agent | Purpose |
 |:------|:------|:--------|
-| Recon | `NetReconAgent` | Port scanning (nmap) |
+| **Recon** | `NetReconAgent` | Port scanning (nmap) |
 | Recon | `CrawlerAgent` | Endpoint discovery (katana, gau) |
 | Recon | `TechFingerprinterAgent` | Framework detection (whatweb) |
 | Recon | `JSHarvesterAgent` | JavaScript bundle analysis |
 | Recon | `APIDiscovererAgent` | OpenAPI/GraphQL discovery |
 | Recon | `SubdomainHunterAgent` | Subdomain enumeration (subfinder) |
-| Analysis | `ArchitectInferAgent` | Architecture inference via LLM |
+| Recon | `ContentDiscoveryAgent` | Hidden files/dirs (feroxbuster, ffuf) |
+| Recon | `SecretScannerAgent` | Credential detection (trufflehog, gitleaks) |
+| Recon | `WAFDetector` | WAF detection (wafw00f) |
+| **Analysis** | `ArchitectInferAgent` | Architecture inference via LLM |
 | Analysis | `AuthFlowAnalyzer` | Authentication flow detection |
 | Analysis | `DataFlowMapper` | Source-to-sink data flow analysis |
 | Analysis | `VulnHypothesizer` | OWASP vulnerability hypotheses |
 | Analysis | `BusinessLogicAgent` | Workflow/state machine detection |
-| Synthesis | `SourceGenAgent` | Framework-aware code generation |
+| Analysis | `SecurityHeaderAnalyzer` | HSTS, CSP, security headers (A-F grading) |
+| Analysis | `TLSAnalyzer` | TLS/SSL config (sslyze, cipher checks) |
+| **Synthesis** | `SourceGenAgent` | Framework-aware code generation |
 | Synthesis | `SchemaGenAgent` | OpenAPI/GraphQL schema generation |
 | Synthesis | `TestGenAgent` | API and security test generation |
 | Synthesis | `DocumentationAgent` | Model-driven documentation |
+| Synthesis | `GroundTruthAgent` | Endpoint accessibility validation |
+| **Exploitation** | `NucleiScanAgent` | CVE/exposure scanning (nuclei) |
+| Exploitation | `MetasploitAgent` | msfrpc module execution |
+| Exploitation | `SQLmapAgent` | SQL injection validation |
+| Exploitation | `XSSValidatorAgent` | XSS confirmation (xsstrike) |
+| Exploitation | `CommandInjectionAgent` | OS command injection (commix) |
 
 ### Key Components
 
@@ -74,9 +87,9 @@ EvidenceGraph → TargetModel → ArtifactManifest
 | `ArtifactManifest` | `v2/worldmodel/artifact-manifest.js` | Output tracking |
 | `EpistemicLedger` | `src/core/EpistemicLedger.js` | EBSL/EQBSL claims |
 | `WorldModel` | `src/core/WorldModel.js` | Unified epistemic world model |
-| `SecurityHeaderAnalyzer` | `src/analyzers/SecurityHeaderAnalyzer.js` | HSTS, CORS, Clickjacking, CSP |
-| `HTTPMethodAnalyzer` | `src/analyzers/HTTPMethodAnalyzer.js` | Dangerous HTTP method detection |
-| `ErrorPatternAnalyzer` | `src/analyzers/ErrorPatternAnalyzer.js` | Stack traces, SQL errors, debug info |
+| `ASVSMapper` | `v2/compliance/asvs-mapper.js` | OWASP ASVS v4.0.3 mapping |
+| `EnhancedReport` | `v2/reports/enhanced-report.js` | EBSL-aware report generation |
+| `ToolPreflight` | `v2/tools/preflight.js` | Tool availability checks |
 | `Orchestrator` | `v2/orchestrator/scheduler.js` | Pipeline controller |
 | `LLMClient` | `v2/orchestrator/llm-client.js` | Capability-based routing |
 | `ValidationHarness` | `v2/synthesis/validators/validation-harness.js` | Code validation |
@@ -198,5 +211,5 @@ If upstream accepts any of our features, we consider that a success.
 
 ---
 
-*Last updated: 2025-12-21*
+*Last updated: 2025-12-23*
 

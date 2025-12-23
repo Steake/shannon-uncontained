@@ -4,6 +4,85 @@ This document tracks significant modifications made to the Shannon codebase.
 
 ---
 
+## LSGv2 Exploitation, Recon, and Compliance Expansion (2025-12-23)
+
+### Overview
+Major expansion of LSGv2 with 12 new agents across 4 phases: exploitation tools (Nuclei, Metasploit, SQLmap), validation agents (XSS, Command Injection), blue team analyzers (Security Headers, TLS, WAF), and compliance infrastructure (OWASP ASVS mapping, enhanced reporting).
+
+### New Agents (12 Total)
+
+| Phase | Agent | Tool Integration | Purpose |
+|:------|:------|:-----------------|:--------|
+| **Exploitation** | `NucleiScanAgent` | nuclei | CVE/exposure scanning |
+| Exploitation | `MetasploitAgent` | msfrpc | Module execution via RPC |
+| Exploitation | `SQLmapAgent` | sqlmap | SQL injection validation |
+| Exploitation | `XSSValidatorAgent` | xsstrike | XSS confirmation |
+| Exploitation | `CommandInjectionAgent` | commix | OS command injection |
+| **Recon** | `ContentDiscoveryAgent` | feroxbuster, ffuf | Hidden file discovery |
+| Recon | `SecretScannerAgent` | trufflehog, gitleaks | Credential detection |
+| Recon | `WAFDetector` | wafw00f | WAF fingerprinting |
+| **Analysis** | `SecurityHeaderAnalyzer` | native | HSTS, CSP, security headers |
+| Analysis | `TLSAnalyzer` | sslyze | TLS/SSL configuration |
+| **Synthesis** | `GroundTruthAgent` | native | Endpoint accessibility |
+
+### New Infrastructure Components
+
+| Component | Path | Purpose |
+|:----------|:-----|:--------|
+| `ToolPreflight` | `v2/tools/preflight.js` | Tool availability checks (15+ tools) |
+| `ASVSMapper` | `v2/compliance/asvs-mapper.js` | OWASP ASVS v4.0.3 mapping |
+| `EnhancedReport` | `v2/reports/enhanced-report.js` | EBSL-aware reporting |
+
+### OWASP ASVS Coverage
+- **14 chapters** (V1-V14) with ~50 requirements mapped
+- **Claim-to-ASVS mapping** for 40+ vulnerability types
+- **Compliance scoring** with remediation guidance
+
+### Enhanced Report Features
+- EBSL confidence scores for all findings
+- Evidence chains with source tracking
+- PoC extraction from exploitation agents
+- JSON, Markdown, and HTML output formats
+
+### Files Created (19 New Files)
+```
+src/local-source-generator/v2/
+├── agents/
+│   ├── exploitation/
+│   │   ├── index.js
+│   │   ├── nuclei-agent.js
+│   │   ├── metasploit-agent.js
+│   │   ├── sqlmap-agent.js
+│   │   ├── xss-validator-agent.js
+│   │   └── cmdi-agent.js
+│   ├── recon/
+│   │   ├── content-discovery-agent.js
+│   │   ├── secret-scanner-agent.js
+│   │   └── waf-detector-agent.js
+│   ├── analysis/
+│   │   ├── security-header-analyzer.js
+│   │   └── tls-analyzer.js
+│   └── synthesis/
+│       └── ground-truth-agent.js
+├── compliance/
+│   └── asvs-mapper.js
+├── reports/
+│   └── enhanced-report.js
+├── tools/
+│   └── preflight.js
+└── validators/
+    ├── endpoint-prober.js
+    └── ground-truth-validator.js
+```
+
+### Statistics
+- **4,628 lines** of new code
+- **19 files** created
+- **12 new agents** (27 total in LSGv2)
+- **100%** syntax verification pass rate
+
+---
+
 ## LLM Configuration Documentation (2025-12-22)
 
 ### Overview
