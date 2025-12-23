@@ -118,7 +118,15 @@ export class NetReconAgent extends BaseAgent {
                     error: result.error,
                     stderr: result.stderr,
                 },
+                payload: {
+                    tool: 'nmap',
+                    error: result.error,
+                    stderr: result.stderr,
+                },
             }));
+
+            // Explicitly fail the agent execution so the pipeline knows
+            throw new Error(`Nmap failed: ${result.error} \nStats: ${result.stderr}`);
         }
 
         return results;

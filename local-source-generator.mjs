@@ -153,14 +153,15 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
         console.log(chalk.gray(`   World model: ${path.join(sourceDir, 'world-model.json')}`));
 
         return sourceDir;
-
     } catch (error) {
         bar.stop();
         console.error(chalk.red(`\n❌ Pipeline failed: ${error.message}`));
         if (options.verbose) {
             console.error(error.stack);
         }
-        throw error;
+        process.exit(1);
+    } finally {
+        process.exit(0);
     }
 }
 

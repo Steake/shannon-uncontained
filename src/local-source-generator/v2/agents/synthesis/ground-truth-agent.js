@@ -140,7 +140,9 @@ export class GroundTruthAgent extends BaseAgent {
      * Main execution
      */
     async run(ctx, inputs) {
-        const { webUrl, sourceDir, concurrency = 3, delay = 500 } = inputs;
+        // Fix: inputs.outputDir contains the generated source, inputs.sourceDir might be undefined
+        const { webUrl, concurrency = 3, delay = 500 } = inputs;
+        const sourceDir = inputs.sourceDir || inputs.outputDir;
 
         // Extract routes from pseudo-code
         const routes = await this.extractRoutes(sourceDir);

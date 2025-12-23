@@ -57,10 +57,10 @@ export const executeGitCommandWithRetry = async (commandArgs, sourceDir, descrip
         return result;
       } catch (error) {
         const isLockError = error.message.includes('index.lock') ||
-                           error.message.includes('unable to lock') ||
-                           error.message.includes('Another git process') ||
-                           error.message.includes('fatal: Unable to create') ||
-                           error.message.includes('fatal: index file');
+          error.message.includes('unable to lock') ||
+          error.message.includes('Another git process') ||
+          error.message.includes('fatal: Unable to create') ||
+          error.message.includes('fatal: index file');
 
         if (isLockError && attempt < maxRetries) {
           const delay = Math.pow(2, attempt - 1) * 1000; // Exponential backoff: 1s, 2s, 4s, 8s, 16s
@@ -109,7 +109,8 @@ const cleanWorkspace = async (sourceDir, reason = 'clean start') => {
 };
 
 export const createGitCheckpoint = async (sourceDir, description, attempt) => {
-  console.log(chalk.blue(`    📍 Creating checkpoint for ${description} (attempt ${attempt})`));
+  const isVerbose = process.env.LSG_VERBOSE || process.argv.includes('--verbose') || process.argv.includes('-v');
+  if (isVerbose) console.log(chalk.blue(`    📍 Creating checkpoint for ${description} (attempt ${attempt})`));
   try {
     // Only clean workspace on retry attempts (attempt > 1), not on first attempts
     // This preserves deliverables between agents while still cleaning on actual retries
@@ -131,9 +132,9 @@ export const createGitCheckpoint = async (sourceDir, description, attempt) => {
     await executeGitCommandWithRetry(['git', 'commit', '-m', `📍 Checkpoint: ${description} (attempt ${attempt})`, '--allow-empty'], sourceDir, 'creating commit');
 
     if (hasChanges) {
-      console.log(chalk.blue(`    ✅ Checkpoint created with uncommitted changes staged`));
+      if (isVerbose) console.log(chalk.blue(`    ✅ Checkpoint created with uncommitted changes staged`));
     } else {
-      console.log(chalk.blue(`    ✅ Empty checkpoint created (no workspace changes)`));
+      if (isVerbose) console.log(chalk.blue(`    ✅ Empty checkpoint created (no workspace changes)`));
     }
     return { success: true };
   } catch (error) {
@@ -143,7 +144,8 @@ export const createGitCheckpoint = async (sourceDir, description, attempt) => {
 };
 
 export const commitGitSuccess = async (sourceDir, description) => {
-  console.log(chalk.green(`    💾 Committing successful results for ${description}`));
+  const isVerbose = process.env.LSG_VERBOSE || process.argv.includes('--verbose') || process.argv.includes('-v');
+  if (isVerbose) console.log(chalk.green(`    💾 Committing successful results for ${description}`));
   try {
     // Check what we're about to commit with retry logic
     const status = await executeGitCommandWithRetry(['git', 'status', '--porcelain'], sourceDir, 'status check for success commit');
@@ -162,7 +164,7 @@ export const commitGitSuccess = async (sourceDir, description) => {
         console.log(chalk.gray(`       ... and ${changes.length - 5} more files`));
       }
     } else {
-      console.log(chalk.green(`    ✅ Empty success commit created (agent made no file changes)`));
+      if (isVerbose) console.log(chalk.green(`    ✅ Empty success commit created (agent made no file changes)`));
     }
     return { success: true };
   } catch (error) {
