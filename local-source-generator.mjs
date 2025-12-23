@@ -72,13 +72,18 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
         streamDeltas: true,
     });
 
-    // MultiBar Setup
+    // MultiBar Setup - configured to suppress excessive newlines
     const multibar = new cliProgress.MultiBar({
         clearOnComplete: false,
         hideCursor: true,
         format: '{bar} | {agent} | {status}',
         barCompleteChar: '\u2588',
         barIncompleteChar: '\u2591',
+        linewrap: false,
+        noTTYOutput: false,
+        emptyOnZero: true,
+        forceRedraw: false,
+        stopOnComplete: true,
     }, cliProgress.Presets.shades_grey);
 
 
