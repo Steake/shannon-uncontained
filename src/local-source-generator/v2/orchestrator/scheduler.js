@@ -263,35 +263,95 @@ export class Orchestrator extends EventEmitter {
     }
 
     /**
-     * Define standard LSG pipeline
+     * Define standard LSG pipeline with all phases
      * @returns {PipelineStage[]} Pipeline stages
      */
     static defineLSGPipeline() {
         return [
+            // Phase 1: Reconnaissance
             new PipelineStage('recon', [
                 'NetReconAgent',
-                'SubdomainHunter',
-                'TechFingerprinter',
+                'SubdomainHunterAgent',
+                'TechFingerprinterAgent',
                 'CrawlerAgent',
-                'JSHarvester',
-                'APIDiscoverer',
-            ], { parallel: true }),
+                'JSHarvesterAgent',
+                'APIDiscovererAgent',
+                'ContentDiscoveryAgent',
+                'SecretScannerAgent',
+                'WAFDetector',
+            ], { parallel: true, required: false }),
 
+            // Phase 2: Analysis  
             new PipelineStage('analysis', [
                 'ArchitectInferAgent',
                 'AuthFlowAnalyzer',
                 'DataFlowMapper',
                 'BusinessLogicAgent',
                 'VulnHypothesizer',
-            ], { parallel: false }),
+                'SecurityHeaderAnalyzer',
+                'TLSAnalyzer',
+            ], { parallel: false, required: false }),
 
+            // Phase 3: Exploitation/Validation
+            new PipelineStage('exploitation', [
+                'NucleiScanAgent',
+                'SQLmapAgent',
+                'XSSValidatorAgent',
+                'CommandInjectionAgent',
+            ], { parallel: true, required: false }),
+
+            // Phase 4: Synthesis
             new PipelineStage('synthesis', [
+                'GroundTruthAgent',
                 'SourceGenAgent',
                 'SchemaGenAgent',
                 'TestGenAgent',
                 'DocumentationAgent',
-            ], { parallel: false }),
+            ], { parallel: false, required: false }),
         ];
+    }
+
+    /**
+     * Run the full LSG pipeline
+     * @param {string} target - Target URL
+     * @param {string} outputDir - Output directory
+     * @param {object} options - Pipeline options
+     * @returns {Promise<object>} Pipeline result
+     */
+    async runFullPipeline(target, outputDir, options = {}) {
+        const pipeline = Orchestrator.defineLSGPipeline();
+
+        this.emit('pipeline:init', { target, outputDir, stages: pipeline.length });
+
+        // Create initial inputs
+        const inputs = {
+            target,
+            outputDir,
+            framework: options.framework || 'express',
+        };
+
+        // Execute full pipeline
+        const result = await this.executePipeline(pipeline, inputs);
+
+        // Export state to output directory
+        if (outputDir) {
+            const { fs, path } = await import('zx');
+            await fs.ensureDir(outputDir);
+
+            // Save world model
+            const stateFile = path.join(outputDir, 'world-model.json');
+            await fs.writeJSON(stateFile, this.exportState(), { spaces: 2 });
+
+            // Save execution log
+            const logFile = path.join(outputDir, 'execution-log.json');
+            await fs.writeJSON(logFile, this.executionLog, { spaces: 2 });
+        }
+
+        return {
+            ...result,
+            target,
+            outputDir,
+        };
     }
 
     /**
