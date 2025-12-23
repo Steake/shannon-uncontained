@@ -82,7 +82,7 @@ export class NetReconAgent extends BaseAgent {
         const ports = inputs.ports || '21,22,23,25,53,80,110,143,443,445,993,995,3306,3389,5432,8080,8443';
         const flags = inputs.aggressive ? '-A' : '-sV';
         this.setStatus(`Scanning ${hostname} (nmap ${flags})...`);
-        let command = `nmap ${flags} -p ${ports} --open -oG - ${hostname}`;
+        let command = `nmap ${flags} -p ${ports} --open ${hostname}`;
 
         // Run nmap
         let result = await runToolWithRetry(command, {
@@ -91,7 +91,7 @@ export class NetReconAgent extends BaseAgent {
 
         // FALLBACK: If nmap fails due to missing NSE scripts (common on some installs), try without version detection
         if (!result.success && (result.stderr?.includes('nse_main.lua') || result.error?.includes('nse_main.lua'))) {
-            const fallbackCommand = `nmap -p ${ports} --open -oG - ${hostname}`;
+            const fallbackCommand = `nmap -p ${ports} --open ${hostname}`;
             // We can't use console.log easily here without breaking CLI, but the agent will just succeed silently with fallback
             this.setStatus('NSE missing. Falling back to port scan...');
             result = await runToolWithRetry(fallbackCommand, {
