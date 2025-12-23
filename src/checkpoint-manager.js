@@ -26,6 +26,42 @@ import {
   updateSession
 } from './session-manager.js';
 
+/**
+ * Global Circuit Breaker for API rate limiting / credit exhaustion
+ * Tracks consecutive 402 errors and halts all agents after threshold
+ */
+const circuitBreaker = {
+  consecutive402Errors: 0,
+  threshold: 3, // Halt after 3 consecutive 402s
+  isTripped: false,
+  lastError: null,
+
+  record402Error(error) {
+    this.consecutive402Errors++;
+    this.lastError = error;
+    if (this.consecutive402Errors >= this.threshold) {
+      this.isTripped = true;
+      console.error(chalk.red(`\n🔌 CIRCUIT BREAKER TRIPPED: ${this.consecutive402Errors} consecutive 402 errors (insufficient credits)`));
+      console.error(chalk.yellow('   ➡️  Halting all agent execution. Please add credits at https://openrouter.ai/settings/credits'));
+    }
+    return this.isTripped;
+  },
+
+  recordSuccess() {
+    this.consecutive402Errors = 0;
+  },
+
+  reset() {
+    this.consecutive402Errors = 0;
+    this.isTripped = false;
+    this.lastError = null;
+  }
+};
+
+// Export for testing/external access
+export { circuitBreaker };
+
+
 // Check if target repository exists and is accessible
 const validateTargetRepo = async (targetRepo) => {
   if (!targetRepo || !await fs.pathExists(targetRepo)) {
@@ -36,7 +72,7 @@ const validateTargetRepo = async (targetRepo) => {
       { targetRepo }
     );
   }
-  
+
   // Check if it's a git repository
   const gitDir = path.join(targetRepo, '.git');
   if (!await fs.pathExists(gitDir)) {
@@ -47,7 +83,7 @@ const validateTargetRepo = async (targetRepo) => {
       { targetRepo }
     );
   }
-  
+
   return true;
 };
 
@@ -88,42 +124,42 @@ const runSingleAgent = async (agentName, session, pipelineTestingMode, runClaude
   const agent = validateAgent(agentName);
 
   console.log(chalk.cyan(`\n🤖 Running agent: ${agent.displayName}`));
-  
+
   // Reload session to get latest state (important for agent ranges)
   const { getSession } = await import('./session-manager.js');
   const freshSession = await getSession(session.id);
   if (!freshSession) {
     throw new PentestError(`Session ${session.id} not found`, 'validation', false);
   }
-  
+
   // Use fresh session for all subsequent checks
   session = freshSession;
-  
+
   // Warn if session is completed
   if (session.status === 'completed') {
     console.log(chalk.yellow('⚠️  This session is already completed. Re-running will modify completed results.'));
   }
-  
+
   // Block re-running completed agents unless explicitly allowed - use --rerun for explicit rollback and re-run
   if (!allowRerun && session.completedAgents.includes(agentName)) {
     throw new PentestError(
       `Agent '${agentName}' has already been completed. Use --rerun ${agentName} for explicit rollback and re-execution.`,
       'validation',
       false,
-      { 
-        agentName, 
+      {
+        agentName,
         suggestion: `--rerun ${agentName}`,
-        completedAgents: session.completedAgents 
+        completedAgents: session.completedAgents
       }
     );
   }
-  
+
   const targetRepo = session.targetRepo;
   await validateTargetRepo(targetRepo);
-  
+
   // Check prerequisites
   checkPrerequisites(session, agentName);
-  
+
   // Additional safety check: if this agent is not completed but we have uncommitted changes,
   // it might be from a previous interrupted run. Clean the workspace to be safe.
   // Skip workspace cleaning during parallel execution to avoid agents interfering with each other
@@ -143,14 +179,15 @@ const runSingleAgent = async (agentName, session, pipelineTestingMode, runClaude
       console.log(chalk.yellow(`    ⚠️ Could not check/clean workspace: ${error.message}`));
     }
   }
-  
+
   // Create checkpoint before execution
   const variables = {
     webUrl: session.webUrl,
     repoPath: session.repoPath,
-    sourceDir: targetRepo
+    sourceDir: targetRepo,
+    isBlackbox: session.isBlackbox || false // Flag for blackbox/synthetic code mode
   };
-  
+
   // Handle relative config paths - prepend configs/ if needed
   let configPath = null;
   if (session.configFile) {
@@ -158,7 +195,7 @@ const runSingleAgent = async (agentName, session, pipelineTestingMode, runClaude
       ? session.configFile
       : path.join('configs', session.configFile);
   }
-  
+
   const config = configPath ? await parseConfig(configPath) : null;
   const distributedConfig = config ? distributeConfig(config) : null;
   // Removed prompt snapshotting - using live prompts from repo
@@ -172,7 +209,7 @@ const runSingleAgent = async (agentName, session, pipelineTestingMode, runClaude
     // Load and run the appropriate prompt
     let promptName = getPromptName(agentName);
     const prompt = await loadPrompt(promptName, variables, distributedConfig, pipelineTestingMode);
-    
+
     // Get color function for this agent
     const getAgentColor = (agentName) => {
       const colorMap = {
@@ -200,7 +237,7 @@ const runSingleAgent = async (agentName, session, pipelineTestingMode, runClaude
       getAgentColor(agentName),  // Pass color function for this agent
       { id: session.id, webUrl: session.webUrl, repoPath: session.repoPath }  // Session metadata for audit logging
     );
-    
+
     if (!result.success) {
       throw new PentestError(
         `Agent execution failed: ${result.error}`,
@@ -209,10 +246,10 @@ const runSingleAgent = async (agentName, session, pipelineTestingMode, runClaude
         { agentName, result }
       );
     }
-    
+
     // Get commit hash for checkpoint
     const commitHash = await getGitCommitHash(targetRepo);
-    
+
     // Extract timing and cost data from result if available
     timingData = result.duration;
     costData = result.cost || 0;
@@ -258,7 +295,7 @@ const runSingleAgent = async (agentName, session, pipelineTestingMode, runClaude
       checkpoint: commitHash,
       completedAt: new Date().toISOString()
     });
-    
+
   } catch (error) {
     // Mark agent as failed
     await markAgentFailed(session.id, agentName);
@@ -308,16 +345,16 @@ const runSingleAgent = async (agentName, session, pipelineTestingMode, runClaude
 // Run multiple agents in sequence
 const runAgentRange = async (startAgent, endAgent, session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt) => {
   const agents = validateAgentRange(startAgent, endAgent);
-  
+
   console.log(chalk.cyan(`\n🔄 Running agent range: ${startAgent} to ${endAgent} (${agents.length} agents)`));
-  
+
   for (const agent of agents) {
     // Skip if already completed
     if (session.completedAgents.includes(agent.name)) {
       console.log(chalk.gray(`⏭️  Agent '${agent.name}' already completed, skipping`));
       continue;
     }
-    
+
     try {
       await runSingleAgent(agent.name, session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt);
     } catch (error) {
@@ -325,7 +362,7 @@ const runAgentRange = async (startAgent, endAgent, session, pipelineTestingMode,
       throw error;
     }
   }
-  
+
   console.log(chalk.green(`✅ Agent range ${startAgent} to ${endAgent} completed successfully`));
 };
 
@@ -356,13 +393,28 @@ const runParallelVuln = async (session, pipelineTestingMode, runClaudePromptWith
       const maxAttempts = 3;
 
       while (attempts < maxAttempts) {
+        // Check circuit breaker before each attempt
+        if (circuitBreaker.isTripped) {
+          throw { agentName, error: new Error('Circuit breaker tripped - insufficient API credits'), attempts, circuitBreaker: true };
+        }
+
         attempts++;
         try {
           const result = await runSingleAgent(agentName, session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt, false, true);
+          circuitBreaker.recordSuccess(); // Reset on success
           return { agentName, ...result, attempts };
         } catch (error) {
           lastError = error;
-          if (attempts < maxAttempts) {
+
+          // Check for 402 (insufficient credits) and update circuit breaker
+          const errorCode = error.errorCode || error.code || error.status;
+          if (errorCode === 402 || (error.message && error.message.includes('402'))) {
+            if (circuitBreaker.record402Error(error)) {
+              throw { agentName, error: lastError, attempts, circuitBreaker: true };
+            }
+          }
+
+          if (attempts < maxAttempts && !circuitBreaker.isTripped) {
             console.log(chalk.yellow(`⚠️ ${agentName} failed attempt ${attempts}/${maxAttempts}, retrying...`));
             await new Promise(resolve => setTimeout(resolve, 5000));
           }
@@ -620,10 +672,10 @@ export const runPhase = async (phaseName, session, pipelineTestingMode, runClaud
 // Rollback to specific agent checkpoint
 export const rollbackTo = async (targetAgent, session) => {
   console.log(chalk.yellow(`🔄 Rolling back to agent: ${targetAgent}`));
-  
+
   await validateTargetRepo(session.targetRepo);
   validateAgent(targetAgent);
-  
+
   if (!session.checkpoints[targetAgent]) {
     throw new PentestError(
       `No checkpoint found for agent '${targetAgent}' in session history`,
@@ -632,7 +684,7 @@ export const rollbackTo = async (targetAgent, session) => {
       { targetAgent, availableCheckpoints: Object.keys(session.checkpoints) }
     );
   }
-  
+
   const commitHash = session.checkpoints[targetAgent];
 
   // Rollback git workspace
@@ -669,24 +721,24 @@ export const rollbackTo = async (targetAgent, session) => {
 // Rerun specific agent (rollback to previous + run current)
 export const rerunAgent = async (agentName, session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt) => {
   console.log(chalk.cyan(`🔁 Rerunning agent: ${agentName}`));
-  
+
   const agent = validateAgent(agentName);
-  
+
   // Find previous agent checkpoint or initial state
   let rollbackTarget = null;
   if (agent.prerequisites.length > 0) {
     // Find the last completed prerequisite
-    const completedPrereqs = agent.prerequisites.filter(prereq => 
+    const completedPrereqs = agent.prerequisites.filter(prereq =>
       session.completedAgents.includes(prereq)
     );
     if (completedPrereqs.length > 0) {
       // Get the prerequisite with highest order
-      rollbackTarget = completedPrereqs.reduce((latest, current) => 
+      rollbackTarget = completedPrereqs.reduce((latest, current) =>
         AGENTS[current].order > AGENTS[latest].order ? current : latest
       );
     }
   }
-  
+
   if (rollbackTarget) {
     console.log(chalk.blue(`📍 Rolling back to prerequisite: ${rollbackTarget}`));
     await rollbackTo(rollbackTarget, session);
@@ -701,10 +753,10 @@ export const rerunAgent = async (agentName, session, pipelineTestingMode, runCla
       console.log(chalk.yellow(`⚠️ Could not find initial commit, using HEAD: ${error.message}`));
     }
   }
-  
+
   // Run the target agent (allow rerun since we've explicitly rolled back)
   await runSingleAgent(agentName, session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt, true);
-  
+
   console.log(chalk.green(`✅ Agent '${agentName}' rerun completed successfully`));
 };
 
@@ -712,28 +764,28 @@ export const rerunAgent = async (agentName, session, pipelineTestingMode, runCla
 export const runAll = async (session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt) => {
   // Get all agents in order
   const allAgentNames = Object.keys(AGENTS);
-  
+
   console.log(chalk.cyan(`\n🚀 Running all remaining agents to completion`));
   console.log(chalk.gray(`Current progress: ${session.completedAgents.length}/${allAgentNames.length} agents completed`));
-  
+
   // Find remaining agents (not yet completed)
-  const remainingAgents = allAgentNames.filter(agentName => 
+  const remainingAgents = allAgentNames.filter(agentName =>
     !session.completedAgents.includes(agentName)
   );
-  
+
   if (remainingAgents.length === 0) {
     console.log(chalk.green('✅ All agents already completed!'));
     return;
   }
-  
+
   console.log(chalk.blue(`📋 Remaining agents: ${remainingAgents.join(', ')}`));
   console.log();
-  
+
   // Run each remaining agent in sequence
   for (const agentName of remainingAgents) {
     await runSingleAgent(agentName, session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt);
   }
-  
+
   console.log(chalk.green(`\n🎉 All agents completed successfully! Session marked as completed.`));
 };
 
@@ -741,11 +793,11 @@ export const runAll = async (session, pipelineTestingMode, runClaudePromptWithRe
 export const displayStatus = async (session) => {
   const status = getSessionStatus(session);
   const timeAgo = getTimeAgo(session.lastActivity);
-  
+
   console.log(chalk.cyan(`Session: ${new URL(session.webUrl).hostname} + ${path.basename(session.repoPath)}`));
   console.log(chalk.gray(`Session ID: ${session.id}`));
   console.log(chalk.gray(`Source Directory: ${session.targetRepo}`));
-  
+
   // Check if final deliverable exists and show its path
   if (session.targetRepo) {
     const finalReportPath = path.join(session.targetRepo, 'deliverables', 'comprehensive_security_assessment_report.md');
@@ -757,29 +809,29 @@ export const displayStatus = async (session) => {
       // Silently ignore if we can't check the file
     }
   }
-  
+
   const statusColor = status.status === 'completed' ? chalk.green : status.status === 'failed' ? chalk.red : chalk.blue;
   console.log(statusColor(`Status: ${status.status} (${status.completedCount}/${status.totalAgents} agents completed)`));
   console.log(chalk.gray(`Last Activity: ${timeAgo}`));
-  
+
   if (session.configFile) {
     console.log(chalk.gray(`Config: ${session.configFile}`));
   }
-  
+
   // Display cost and timing breakdown if available
   if (session.costBreakdown || session.timingBreakdown) {
     console.log(); // Empty line before metrics
-    
+
     if (session.timingBreakdown) {
       console.log(chalk.blue('⏱️  Timing Breakdown:'));
       console.log(chalk.gray(`   Total Execution: ${formatDuration(session.timingBreakdown.total || 0)}`));
-      
+
       if (session.timingBreakdown.phases) {
         Object.entries(session.timingBreakdown.phases).forEach(([phase, duration]) => {
           console.log(chalk.gray(`   ${phase}: ${formatDuration(duration)}`));
         });
       }
-      
+
       if (session.timingBreakdown.agents) {
         console.log(chalk.gray('   Per Agent:'));
         Object.entries(session.timingBreakdown.agents).forEach(([agent, duration]) => {
@@ -787,11 +839,11 @@ export const displayStatus = async (session) => {
         });
       }
     }
-    
+
     if (session.costBreakdown) {
       console.log(chalk.blue('💰 Cost Breakdown:'));
       console.log(chalk.gray(`   Total Cost: $${(session.costBreakdown.total || 0).toFixed(4)}`));
-      
+
       if (session.costBreakdown.agents) {
         console.log(chalk.gray('   Per Agent:'));
         Object.entries(session.costBreakdown.agents).forEach(([agent, cost]) => {
@@ -800,15 +852,15 @@ export const displayStatus = async (session) => {
       }
     }
   }
-  
+
   console.log(); // Empty line
-  
+
   // Display agent status
   const agentList = Object.values(AGENTS).sort((a, b) => a.order - b.order);
-  
+
   for (const agent of agentList) {
     let statusIcon, statusText, statusColor;
-    
+
     if (session.completedAgents.includes(agent.name)) {
       statusIcon = '✅';
       statusText = `completed ${getTimeAgoForAgent(session, agent.name)}`;
@@ -822,11 +874,11 @@ export const displayStatus = async (session) => {
       statusText = 'pending';
       statusColor = chalk.gray;
     }
-    
+
     const displayName = agent.name.replace(/-/g, ' ');
     console.log(`${statusIcon} ${statusColor(displayName.padEnd(20))} (${statusText})`);
   }
-  
+
   // Show next action
   const nextAgent = getNextAgent(session);
   if (nextAgent) {
@@ -842,17 +894,17 @@ export const displayStatus = async (session) => {
 // List all available agents
 export const listAgents = () => {
   console.log(chalk.cyan('Available Agents:'));
-  
+
   const phaseNames = Object.keys(PHASES);
-  
+
   phaseNames.forEach((phaseName, phaseIndex) => {
     const phaseAgents = PHASES[phaseName];
-    const phaseDisplayName = phaseName.split('-').map(word => 
+    const phaseDisplayName = phaseName.split('-').map(word =>
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
-    
+
     console.log(chalk.yellow(`\nPhase ${phaseIndex + 1} - ${phaseDisplayName}:`));
-    
+
     phaseAgents.forEach(agentName => {
       const agent = AGENTS[agentName];
       console.log(chalk.white(`  ${agent.name.padEnd(18)} ${agent.displayName}`));
@@ -877,7 +929,7 @@ const getPromptName = (agentName) => {
     'authz-exploit': 'exploit-authz',
     'report': 'report-executive'
   };
-  
+
   return mappings[agentName] || agentName;
 };
 
@@ -893,11 +945,11 @@ const getTimeAgo = (timestamp) => {
   const now = new Date();
   const past = new Date(timestamp);
   const diffMs = now - past;
-  
+
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
+
   if (diffMins < 60) {
     return `${diffMins}m ago`;
   } else if (diffHours < 24) {

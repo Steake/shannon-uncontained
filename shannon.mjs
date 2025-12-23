@@ -36,6 +36,8 @@ program
   .option('--evidence-in <file>', 'Input evidence file for replay')
   .option('--evidence-out <file>', 'Output evidence file')
   .option('--profile <profile>', 'Budget profile: ci, recon-only, full (future feature)', 'full')
+  .option('--resume', 'Resume existing session (even if completed)')
+  .option('--restore <agent>', 'Restore to specific agent checkpoint')
   .option('--config <file>', 'Path to configuration file')
   // Budget Options
   .option('--max-time-ms <ms>', 'Max execution time in ms', parseInt)

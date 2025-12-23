@@ -9,6 +9,278 @@ import path from 'path';
 const execAsync = promisify(exec);
 
 /**
+ * Model Limits Registry
+ * Dynamically detects and caches model context limits from API error responses.
+ * Persists to .shannon-model-limits.json for future runs.
+ */
+const MODEL_LIMITS_FILE = path.join(process.cwd(), '.shannon-model-limits.json');
+
+// In-memory cache of model limits
+let modelLimitsCache = {};
+
+/**
+ * Load model limits from persistent storage
+ */
+async function loadModelLimits() {
+    try {
+        const data = await fs.readFile(MODEL_LIMITS_FILE, 'utf8');
+        modelLimitsCache = JSON.parse(data);
+        console.log(`📊 Loaded ${Object.keys(modelLimitsCache).length} known model limits`);
+    } catch {
+        // File doesn't exist yet, start with empty cache
+        modelLimitsCache = {};
+    }
+    return modelLimitsCache;
+}
+
+/**
+ * Save model limits to persistent storage
+ */
+async function saveModelLimits() {
+    try {
+        await fs.writeFile(MODEL_LIMITS_FILE, JSON.stringify(modelLimitsCache, null, 2));
+    } catch (err) {
+        console.warn(`⚠️ Failed to save model limits: ${err.message}`);
+    }
+}
+
+/**
+ * Parse context limit from API error message
+ * Example: "This endpoint's maximum context length is 262144 tokens."
+ */
+function parseContextLimitFromError(errorMessage) {
+    // Pattern: "maximum context length is X tokens"
+    const match = errorMessage.match(/maximum context length is (\d+) tokens/i);
+    if (match) {
+        return parseInt(match[1], 10);
+    }
+    return null;
+}
+
+/**
+ * Record a discovered model limit
+ */
+async function recordModelLimit(modelName, limit) {
+    const existingLimit = modelLimitsCache[modelName];
+    if (existingLimit !== limit) {
+        modelLimitsCache[modelName] = limit;
+        console.log(`📊 Discovered model limit: ${modelName} → ${limit.toLocaleString()} tokens`);
+        await saveModelLimits();
+    }
+}
+
+/**
+ * Get known limit for a model (if any)
+ */
+export function getModelLimit(modelName) {
+    return modelLimitsCache[modelName] || null;
+}
+
+/**
+ * Get all known model limits
+ */
+export function getAllModelLimits() {
+    return { ...modelLimitsCache };
+}
+
+// Load limits on module initialization
+loadModelLimits().catch(() => { });
+
+/**
+ * Detect garbled/corrupted output from model
+ * Returns { isGarbled: boolean, reason: string | null }
+ */
+export function detectGarbledOutput(content) {
+    if (!content || typeof content !== 'string') {
+        return { isGarbled: false, reason: null };
+    }
+
+    // Check for unexpected CJK characters (Chinese/Japanese/Korean) when not expected
+    // Pattern: significant amount of CJK in otherwise English text
+    const cjkChars = content.match(/[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/g) || [];
+    const latinChars = content.match(/[a-zA-Z]/g) || [];
+
+    if (cjkChars.length > 10 && latinChars.length > 50) {
+        const cjkRatio = cjkChars.length / (latinChars.length + cjkChars.length);
+        if (cjkRatio > 0.05 && cjkRatio < 0.5) {
+            // Suspiciously mixed - likely encoding corruption
+            return {
+                isGarbled: true,
+                reason: `Unexpected CJK characters (${cjkChars.length} chars, ${(cjkRatio * 100).toFixed(1)}% of text)`
+            };
+        }
+    }
+
+    // Check for repeated character sequences (sign of model loop/corruption)
+    // Pattern: same 5+ character sequence repeated 3+ times consecutively
+    const repeatedPattern = /(.{5,})\1{2,}/;
+    const match = content.match(repeatedPattern);
+    if (match && match[1].length > 4) {
+        return {
+            isGarbled: true,
+            reason: `Repeated sequence detected: "${match[1].slice(0, 20)}..." (${match[0].length} chars)`
+        };
+    }
+
+    // Check for excessive whitespace/newlines (sign of malformed output)
+    const excessiveNewlines = /\n{10,}/.test(content);
+    if (excessiveNewlines) {
+        return { isGarbled: true, reason: 'Excessive consecutive newlines' };
+    }
+
+    return { isGarbled: false, reason: null };
+}
+
+/**
+ * Detect and parse malformed tool calls from model output
+ * Some models output XML-style <tool_call> tags instead of proper function calls
+ * Returns array of parsed tool calls or empty array if none found
+ */
+export function parseMalformedToolCalls(content) {
+    if (!content || typeof content !== 'string') {
+        return [];
+    }
+
+    const toolCalls = [];
+
+    // Pattern 1: XML-style <tool_call><function=NAME><parameter=KEY>VALUE</parameter>...</function></tool_call>
+    const xmlStylePattern = /<tool_call>\s*<function=(\w+)>([\s\S]*?)<\/function>\s*<\/tool_call>/gi;
+    let match;
+
+    while ((match = xmlStylePattern.exec(content)) !== null) {
+        const functionName = match[1];
+        const paramsBlock = match[2];
+        const args = {};
+
+        // Extract parameters
+        const paramPattern = /<parameter=(\w+)>([\s\S]*?)<\/parameter>/gi;
+        let paramMatch;
+        while ((paramMatch = paramPattern.exec(paramsBlock)) !== null) {
+            args[paramMatch[1]] = paramMatch[2].trim();
+        }
+
+        toolCalls.push({
+            id: `malformed_${Date.now()}_${toolCalls.length}`,
+            type: 'function',
+            function: {
+                name: functionName,
+                arguments: JSON.stringify(args)
+            }
+        });
+    }
+
+    // Pattern 2: Markdown-style ```tool_call or similar
+    const markdownPattern = /```(?:tool_call|function)\s*(\w+)\s*\n([\s\S]*?)```/gi;
+    while ((match = markdownPattern.exec(content)) !== null) {
+        try {
+            const functionName = match[1];
+            const argsText = match[2].trim();
+            // Try to parse as JSON first
+            let args;
+            try {
+                args = JSON.parse(argsText);
+            } catch {
+                // Try to parse key=value pairs
+                args = {};
+                argsText.split('\n').forEach(line => {
+                    const [key, ...valueParts] = line.split('=');
+                    if (key && valueParts.length > 0) {
+                        args[key.trim()] = valueParts.join('=').trim();
+                    }
+                });
+            }
+
+            toolCalls.push({
+                id: `malformed_md_${Date.now()}_${toolCalls.length}`,
+                type: 'function',
+                function: {
+                    name: functionName,
+                    arguments: JSON.stringify(args)
+                }
+            });
+        } catch (e) {
+            // Skip unparseable blocks
+        }
+    }
+
+    if (toolCalls.length > 0) {
+        console.warn(`⚠️ Detected ${toolCalls.length} malformed tool call(s) in text output - parsing and executing`);
+    }
+
+    return toolCalls;
+}
+
+/**
+ * Estimate token count from text (approximation: ~3.5 chars per token for English)
+ * Note: This is slightly conservative to account for edge cases
+ */
+export function estimateTokens(text) {
+    if (!text) return 0;
+    // Use 3.5 chars/token (more accurate than 4) + 5% overhead for JSON encoding
+    return Math.ceil((text.length / 3.5) * 1.05);
+}
+
+// Estimated token overhead for tool definitions sent with each request
+const TOOL_TOKEN_OVERHEAD = 4000;
+
+/**
+ * Compress context to fit within model's token limit
+ * Uses "middle-out" compression: keep start/end, summarize middle
+ */
+export function compressContext(messages, maxTokens) {
+    if (!maxTokens || maxTokens <= 0) {
+        return messages; // No limit, return as-is
+    }
+
+    // Calculate current token estimate
+    const totalTokens = messages.reduce((sum, m) => {
+        const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+        return sum + estimateTokens(content);
+    }, 0);
+
+    if (totalTokens <= maxTokens) {
+        return messages; // Already within limit
+    }
+
+    console.log(`📊 Context compression: ${totalTokens.toLocaleString()} tokens → ${maxTokens.toLocaleString()} limit`);
+
+    // Keep system message and last few messages, truncate middle
+    const systemMessages = messages.filter(m => m.role === 'system');
+    const nonSystemMessages = messages.filter(m => m.role !== 'system');
+
+    // Reserve tokens for system + buffer + tool overhead
+    const systemTokens = systemMessages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+    const availableTokens = maxTokens - systemTokens - TOOL_TOKEN_OVERHEAD - 2000; // 2000 token safety buffer
+
+    if (availableTokens <= 0) {
+        console.warn('⚠️ System messages alone exceed token limit');
+        return messages.slice(0, 2); // Return minimum viable context
+    }
+
+    // Keep most recent messages that fit
+    const keptMessages = [];
+    let keptTokens = 0;
+
+    for (let i = nonSystemMessages.length - 1; i >= 0; i--) {
+        const msg = nonSystemMessages[i];
+        const msgTokens = estimateTokens(typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content));
+
+        if (keptTokens + msgTokens <= availableTokens) {
+            keptMessages.unshift(msg);
+            keptTokens += msgTokens;
+        } else {
+            break;
+        }
+    }
+
+    console.log(`📊 Kept ${keptMessages.length}/${nonSystemMessages.length} messages (${keptTokens.toLocaleString()} tokens)`);
+
+    return [...systemMessages, ...keptMessages];
+}
+
+
+
+/**
  * Detect and configure LLM provider based on environment variables
  * 
  * Priority:
@@ -28,6 +300,7 @@ export function getProviderConfig() {
     const customBaseURL = process.env.LLM_BASE_URL;
     const githubToken = process.env.GITHUB_TOKEN;
     const openaiKey = process.env.OPENAI_API_KEY;
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const modelOverride = process.env.LLM_MODEL;
 
@@ -53,6 +326,19 @@ export function getProviderConfig() {
                     baseURL: customBaseURL || 'https://api.openai.com/v1',
                     apiKey: openaiKey,
                     model: modelOverride || 'gpt-4o'
+                };
+
+            case 'openrouter':
+                if (!openrouterKey) throw new Error('LLM_PROVIDER=openrouter but OPENROUTER_API_KEY not set');
+                return {
+                    provider: 'openrouter',
+                    baseURL: customBaseURL || 'https://openrouter.ai/api/v1',
+                    apiKey: openrouterKey,
+                    model: modelOverride || 'openai/gpt-4o-2024-08-06',
+                    defaultHeaders: {
+                        'HTTP-Referer': 'https://keygraph.dev', // Required by OpenRouter for widely used apps
+                        'X-Title': 'Shannon Agent'
+                    }
                 };
 
             case 'ollama':
@@ -94,16 +380,16 @@ export function getProviderConfig() {
                 return {
                     provider: 'custom',
                     baseURL: customBaseURL,
-                    apiKey: openaiKey || githubToken || dummyKey,
+                    apiKey: openaiKey || githubToken || openrouterKey || dummyKey,
                     model: modelOverride || 'default'
                 };
 
             case 'anthropic':
                 if (!anthropicKey) throw new Error('LLM_PROVIDER=anthropic but ANTHROPIC_API_KEY not set');
-                throw new Error('Anthropic provider requires @anthropic-ai/sdk - use Claude Code or set LLM_PROVIDER=github/openai/ollama');
+                throw new Error('Anthropic provider requires @anthropic-ai/sdk - use Claude Code or set LLM_PROVIDER=github/openai/ollama/openrouter');
 
             default:
-                throw new Error(`Unknown LLM_PROVIDER: ${explicitProvider}. Supported: github, openai, ollama, llamacpp, lmstudio, custom`);
+                throw new Error(`Unknown LLM_PROVIDER: ${explicitProvider}. Supported: github, openai, openrouter, ollama, llamacpp, lmstudio, custom`);
         }
     }
 
@@ -128,13 +414,28 @@ export function getProviderConfig() {
         };
     }
 
+    if (openrouterKey) {
+        console.log('🤖 Auto-detected provider: OpenRouter');
+        return {
+            provider: 'openrouter',
+            baseURL: customBaseURL || 'https://openrouter.ai/api/v1',
+            apiKey: openrouterKey,
+            model: modelOverride || 'openai/gpt-4o-2024-08-06',
+            defaultHeaders: {
+                'HTTP-Referer': 'https://keygraph.dev',
+                'X-Title': 'Shannon Agent'
+            }
+        };
+    }
+
     if (anthropicKey) {
-        throw new Error('Anthropic API key found but Anthropic provider requires @anthropic-ai/sdk. Set GITHUB_TOKEN or OPENAI_API_KEY instead.');
+        throw new Error('Anthropic API key found but Anthropic provider requires @anthropic-ai/sdk. Set GITHUB_TOKEN, OPENAI_API_KEY, or OPENROUTER_API_KEY instead.');
     }
 
     throw new Error(`No LLM provider configured. Set one of:
   - GITHUB_TOKEN (for GitHub Models)
   - OPENAI_API_KEY (for OpenAI)
+  - OPENROUTER_API_KEY (for OpenRouter)
   - LLM_PROVIDER=ollama (for local Ollama)
   - LLM_PROVIDER=llamacpp (for local llama.cpp)
   - LLM_PROVIDER=custom + LLM_BASE_URL (for any OpenAI-compatible endpoint)`);
@@ -151,6 +452,7 @@ export async function* query({ prompt, options }) {
     const client = new OpenAI({
         baseURL: config.baseURL,
         apiKey: config.apiKey,
+        defaultHeaders: config.defaultHeaders
     });
 
     const modelName = config.model;
@@ -332,15 +634,45 @@ export async function* query({ prompt, options }) {
     let turn = 0;
     const maxTurns = options.maxTurns || 200; // Increase turn limit
     let totalCost = 0;
+    const startTime = Date.now(); // Track start time for duration calculation
+
+    // Non-retryable error codes (billing, auth, client errors, payload too large)
+    const NON_RETRYABLE_STATUS_CODES = [400, 401, 402, 403, 404, 413];
+    const isNonRetryableError = (error) => {
+        if (error.status && NON_RETRYABLE_STATUS_CODES.includes(error.status)) {
+            return true;
+        }
+        return false;
+    };
 
     try {
         while (keepGoing && turn < maxTurns) {
             turn++;
 
-            // console.log(`DEBUG: Turn ${turn}, Messages:`, messages.length);
+            // Apply context compression if we know the model's limit
+            const modelLimit = getModelLimit(modelName);
+            let messagesToSend = messages;
+
+            // Proactive compression: estimate tokens and compress if potentially over limit
+            const estimatedTotal = messages.reduce((sum, m) => {
+                const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content || '');
+                return sum + estimateTokens(content);
+            }, 0);
+
+            if (modelLimit) {
+                // Use known limit - trigger at 80% to leave room for tool overhead
+                if (estimatedTotal > modelLimit * 0.8) {
+                    console.log(`📊 Proactive compression: ${estimatedTotal.toLocaleString()} estimated tokens exceeds 80% of ${modelLimit.toLocaleString()} limit`);
+                    messagesToSend = compressContext(messages, Math.floor(modelLimit * 0.75)); // Target 75% to leave headroom
+                }
+            } else if (estimatedTotal > 128000) {
+                // Default safety limit for unknown models (conservative 128k)
+                console.log(`📊 Proactive compression: ${estimatedTotal.toLocaleString()} estimated tokens exceeds 128k safety threshold`);
+                messagesToSend = compressContext(messages, 128000);
+            }
 
             const response = await client.chat.completions.create({
-                messages,
+                messages: messagesToSend,
                 model: modelName,
                 tools: tools,
                 tool_choice: "auto"
@@ -348,6 +680,15 @@ export async function* query({ prompt, options }) {
 
             const choice = response.choices[0];
             const message = choice.message;
+
+            // Check for garbled output
+            if (message.content) {
+                const garbledCheck = detectGarbledOutput(message.content);
+                if (garbledCheck.isGarbled) {
+                    console.warn(`⚠️ Garbled output detected: ${garbledCheck.reason}`);
+                    // Continue anyway but log the issue - let validation handle retry
+                }
+            }
 
             messages.push(message);
 
@@ -505,29 +846,131 @@ export async function* query({ prompt, options }) {
                     });
                 }
             } else {
-                keepGoing = false;
-                let finalResult = message.content || "";
-                yield {
-                    type: "result",
-                    result: finalResult,
-                    total_cost_usd: totalCost,
-                    duration_ms: 0,
-                    subtype: "success"
-                };
+                // Check for malformed tool calls in the text output before terminating
+                const malformedCalls = parseMalformedToolCalls(message.content);
+
+                if (malformedCalls.length > 0) {
+                    // Process malformed tool calls as if they were proper tool calls
+                    for (const toolCall of malformedCalls) {
+                        const functionName = toolCall.function.name;
+                        let functionArgs;
+                        try {
+                            functionArgs = JSON.parse(toolCall.function.arguments);
+                        } catch {
+                            functionArgs = {};
+                        }
+
+                        yield {
+                            type: "tool_use",
+                            name: functionName,
+                            input: functionArgs
+                        };
+
+                        let result;
+                        let isError = false;
+                        try {
+                            // Execute the malformed tool call (same logic as proper tool calls)
+                            if (functionName === "bash" || functionName === "run_command") {
+                                const command = functionArgs.command || functionArgs.CommandLine || '';
+                                const cwd = functionArgs.cwd || functionArgs.Cwd || options.cwd;
+                                const { stdout, stderr } = await execAsync(command, { cwd });
+                                result = stdout + (stderr ? "\nStderr: " + stderr : "");
+                            } else if (functionName === "read_file") {
+                                const filePath = path.resolve(options.cwd, functionArgs.path);
+                                result = await fs.readFile(filePath, 'utf8');
+                            } else if (functionName === "write_file") {
+                                const filePath = path.resolve(options.cwd, functionArgs.path);
+                                await fs.writeFile(filePath, functionArgs.content);
+                                result = "File written successfully";
+                            } else if (functionName === "list_files") {
+                                const searchPath = path.resolve(options.cwd, functionArgs.path);
+                                const files = await fs.readdir(searchPath);
+                                result = files.join('\n');
+                            } else {
+                                result = `Unknown malformed tool: ${functionName}`;
+                                isError = true;
+                            }
+                        } catch (err) {
+                            result = `Error executing malformed ${functionName}: ${err.message}`;
+                            isError = true;
+                        }
+
+                        yield {
+                            type: "tool_result",
+                            content: result,
+                            isError: isError
+                        };
+
+                        // Add the malformed tool call to message history as if it was proper
+                        messages.push({
+                            role: "assistant",
+                            content: null,
+                            tool_calls: [toolCall]
+                        });
+                        messages.push({
+                            tool_call_id: toolCall.id,
+                            role: "tool",
+                            name: functionName,
+                            content: result
+                        });
+                    }
+                    // Continue the loop - don't terminate
+                } else {
+                    // No tool calls and no malformed tool calls - terminate normally
+                    keepGoing = false;
+                    let finalResult = message.content || "";
+                    yield {
+                        type: "result",
+                        result: finalResult,
+                        total_cost_usd: totalCost,
+                        duration_ms: Date.now() - startTime,
+                        subtype: "success"
+                    };
+                }
             }
         }
     } catch (error) {
-        console.error("GITHUB CLIENT CRASHED:", error);
+        // Detect and record model context limits from 400 errors
+        let limitDiscovered = false;
+        if (error.status === 400 && error.message) {
+            const detectedLimit = parseContextLimitFromError(error.message);
+            if (detectedLimit) {
+                await recordModelLimit(modelName, detectedLimit);
+                limitDiscovered = true;
+            }
+        }
+
+        // Classify error for retry logic
+        // Context limit errors ARE retryable if we just discovered the limit
+        const nonRetryable = isNonRetryableError(error) && !limitDiscovered;
+        if (nonRetryable) {
+            console.error(`🚫 Non-retryable error (${error.status}):`, error.message);
+        } else if (limitDiscovered) {
+            console.log(`📊 Context limit discovered (${modelLimitsCache[modelName]?.toLocaleString()} tokens). Will retry with compression.`);
+        } else {
+            console.error("LLM CLIENT CRASHED:", error);
+        }
+
         yield {
             type: "result",
             result: null,
             error: error.message,
-            subtype: "error_during_execution"
+            duration_ms: Date.now() - startTime,
+            nonRetryable: nonRetryable,
+            errorCode: error.status || error.code,
+            subtype: limitDiscovered ? "context_limit_discovered" : "error_during_execution"
         };
     } finally {
-        // Cleanup
+        // Cleanup with EPIPE protection
         for (const mcp of mcpClients) {
-            try { await mcp.transport.close(); } catch (e) { }
+            try {
+                await mcp.transport.close();
+            } catch (e) {
+                // Suppress EPIPE errors during cleanup (process already exiting)
+                if (e.code !== 'EPIPE' && e.code !== 'ERR_STREAM_DESTROYED') {
+                    console.warn(`⚠️ MCP cleanup error: ${e.message}`);
+                }
+            }
         }
     }
 }

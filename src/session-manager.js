@@ -31,7 +31,7 @@ export const AGENTS = Object.freeze({
     order: 1,
     prerequisites: []
   },
-  
+
   // Phase 2 - Reconnaissance  
   'recon': {
     name: 'recon',
@@ -40,7 +40,7 @@ export const AGENTS = Object.freeze({
     order: 2,
     prerequisites: ['pre-recon']
   },
-  
+
   // Phase 3 - Vulnerability Analysis
   'injection-vuln': {
     name: 'injection-vuln',
@@ -77,7 +77,7 @@ export const AGENTS = Object.freeze({
     order: 7,
     prerequisites: ['recon']
   },
-  
+
   // Phase 4 - Exploitation
   'injection-exploit': {
     name: 'injection-exploit',
@@ -114,7 +114,7 @@ export const AGENTS = Object.freeze({
     order: 12,
     prerequisites: ['authz-vuln']
   },
-  
+
   // Phase 5 - Reporting
   'report': {
     name: 'report',
@@ -143,16 +143,16 @@ const loadSessions = async () => {
     if (!await fs.pathExists(STORE_FILE)) {
       return { sessions: {} };
     }
-    
+
     const content = await fs.readFile(STORE_FILE, 'utf8');
     const store = JSON.parse(content);
-    
+
     // Validate store structure
     if (!store || typeof store !== 'object' || !store.sessions) {
       console.log(chalk.yellow('⚠️ Invalid session store format, creating new store'));
       return { sessions: {} };
     }
-    
+
     return store;
   } catch (error) {
     console.log(chalk.yellow(`⚠️ Failed to load session store: ${error.message}, creating new store`));
@@ -200,7 +200,7 @@ const generateSessionId = () => {
 };
 
 // Create new session or return existing one
-export const createSession = async (webUrl, repoPath, configFile = null, targetRepo = null) => {
+export const createSession = async (webUrl, repoPath, configFile = null, targetRepo = null, forceResume = false) => {
   // Use targetRepo if provided, otherwise use repoPath
   const resolvedTargetRepo = targetRepo || repoPath;
 
@@ -209,7 +209,7 @@ export const createSession = async (webUrl, repoPath, configFile = null, targetR
 
   if (existingSession) {
     // If session is not completed, reuse it
-    if (existingSession.status !== 'completed') {
+    if (existingSession.status !== 'completed' || forceResume) {
       console.log(chalk.blue(`📝 Reusing existing session: ${existingSession.id.substring(0, 8)}...`));
       console.log(chalk.gray(`   Progress: ${existingSession.completedAgents.length}/${Object.keys(AGENTS).length} agents completed`));
 
@@ -256,7 +256,7 @@ export const getSession = async (sessionId) => {
 // Update session
 export const updateSession = async (sessionId, updates) => {
   const store = await loadSessions();
-  
+
   if (!store.sessions[sessionId]) {
     throw new PentestError(
       `Session ${sessionId} not found`,
@@ -265,13 +265,13 @@ export const updateSession = async (sessionId, updates) => {
       { sessionId }
     );
   }
-  
+
   store.sessions[sessionId] = {
     ...store.sessions[sessionId],
     ...updates,
     lastActivity: new Date().toISOString()
   };
-  
+
   await saveSessions(store);
   return store.sessions[sessionId];
 };
@@ -285,7 +285,7 @@ const listSessions = async () => {
 // Interactive session selection
 export const selectSession = async () => {
   const sessions = await listSessions();
-  
+
   if (sessions.length === 0) {
     throw new PentestError(
       'No pentest sessions found. Run a normal pentest first to create a session.',
@@ -293,14 +293,14 @@ export const selectSession = async () => {
       false
     );
   }
-  
+
   if (sessions.length === 1) {
     return sessions[0];
   }
-  
+
   // Display session options
   console.log(chalk.cyan('\nMultiple pentest sessions found:\n'));
-  
+
   sessions.forEach((session, index) => {
     const completedCount = session.completedAgents.length;
     const totalAgents = Object.keys(AGENTS).length;
@@ -321,7 +321,7 @@ export const selectSession = async () => {
 
     console.log(); // Empty line between sessions
   });
-  
+
   // Get user selection
   return await promptSelection(
     chalk.cyan(`Select session (1-${sessions.length}):`),
@@ -346,7 +346,7 @@ export const validateAgent = (agentName) => {
 export const validateAgentRange = (startAgent, endAgent) => {
   const start = validateAgent(startAgent);
   const end = validateAgent(endAgent);
-  
+
   if (start.order >= end.order) {
     throw new PentestError(
       `End agent '${endAgent}' must come after start agent '${startAgent}' in sequence.`,
@@ -355,12 +355,12 @@ export const validateAgentRange = (startAgent, endAgent) => {
       { startAgent, endAgent, startOrder: start.order, endOrder: end.order }
     );
   }
-  
+
   // Get all agents in range
   const agentList = Object.values(AGENTS)
     .filter(agent => agent.order >= start.order && agent.order <= end.order)
     .sort((a, b) => a.order - b.order);
-    
+
   return agentList;
 };
 
@@ -380,11 +380,11 @@ export const validatePhase = (phaseName) => {
 // Check prerequisites for an agent
 export const checkPrerequisites = (session, agentName) => {
   const agent = validateAgent(agentName);
-  
-  const missingPrereqs = agent.prerequisites.filter(prereq => 
+
+  const missingPrereqs = agent.prerequisites.filter(prereq =>
     !session.completedAgents.includes(prereq)
   );
-  
+
   if (missingPrereqs.length > 0) {
     throw new PentestError(
       `Cannot run '${agentName}': prerequisite agent(s) not completed: ${missingPrereqs.join(', ')}`,
@@ -393,7 +393,7 @@ export const checkPrerequisites = (session, agentName) => {
       { agentName, missingPrerequisites: missingPrereqs, completedAgents: session.completedAgents }
     );
   }
-  
+
   return true;
 };
 
@@ -401,18 +401,18 @@ export const checkPrerequisites = (session, agentName) => {
 export const getNextAgent = (session) => {
   const completed = new Set(session.completedAgents);
   const failed = new Set(session.failedAgents);
-  
+
   // Find the next agent that hasn't been completed and has all prerequisites
   const nextAgent = Object.values(AGENTS)
     .sort((a, b) => a.order - b.order)
     .find(agent => {
       if (completed.has(agent.name)) return false; // Already completed
-      
+
       // Check if all prerequisites are completed
       const prereqsMet = agent.prerequisites.every(prereq => completed.has(prereq));
       return prereqsMet;
     });
-    
+
   return nextAgent;
 };
 
@@ -460,14 +460,14 @@ export const markAgentFailed = async (sessionId, agentName) => {
   if (!session) {
     throw new PentestError(`Session ${sessionId} not found`, 'validation', false);
   }
-  
+
   validateAgent(agentName);
-  
+
   const updates = {
     failedAgents: [...new Set([...session.failedAgents, agentName])],
     completedAgents: session.completedAgents.filter(agent => agent !== agentName)
   };
-  
+
   return await updateSession(sessionId, updates);
 };
 
@@ -476,11 +476,11 @@ const getTimeAgo = (timestamp) => {
   const now = new Date();
   const past = new Date(timestamp);
   const diffMs = now - past;
-  
+
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
+
   if (diffMins < 60) {
     return `${diffMins}m ago`;
   } else if (diffHours < 24) {
@@ -546,9 +546,9 @@ export const rollbackToAgent = async (sessionId, targetAgent) => {
   if (!session) {
     throw new PentestError(`Session ${sessionId} not found`, 'validation', false);
   }
-  
+
   validateAgent(targetAgent);
-  
+
   if (!session.checkpoints[targetAgent]) {
     throw new PentestError(
       `No checkpoint found for agent '${targetAgent}' in session history`,
@@ -557,13 +557,13 @@ export const rollbackToAgent = async (sessionId, targetAgent) => {
       { targetAgent, availableCheckpoints: Object.keys(session.checkpoints) }
     );
   }
-  
+
   // Find agents that need to be removed (those after the target agent)
   const targetOrder = AGENTS[targetAgent].order;
   const agentsToRemove = Object.values(AGENTS)
     .filter(agent => agent.order > targetOrder)
     .map(agent => agent.name);
-  
+
   const updates = {
     completedAgents: session.completedAgents.filter(agent => !agentsToRemove.includes(agent)),
     failedAgents: session.failedAgents.filter(agent => !agentsToRemove.includes(agent)),
@@ -671,7 +671,7 @@ export const reconcileSession = async (sessionId) => {
 // Delete a specific session by ID
 export const deleteSession = async (sessionId) => {
   const store = await loadSessions();
-  
+
   if (!store.sessions[sessionId]) {
     throw new PentestError(
       `Session ${sessionId} not found`,
@@ -680,11 +680,11 @@ export const deleteSession = async (sessionId) => {
       { sessionId }
     );
   }
-  
+
   const deletedSession = store.sessions[sessionId];
   delete store.sessions[sessionId];
   await saveSessions(store);
-  
+
   return deletedSession;
 };
 

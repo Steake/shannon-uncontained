@@ -28,6 +28,10 @@ Success criterion: A complete, code-backed analysis of every potential authentic
 {{LOGIN_INSTRUCTIONS}}
 </login_instructions>
 
+<blackbox_context>
+{{BLACKBOX_CONTEXT}}
+</blackbox_context>
+
 <critical>
 **Your Professional Standard**
 - **Severity Context:** A flaw in authentication is a catastrophic failure. It fundamentally breaks the trust and safety guarantees of the application, leading to multi-tenant data breaches, complete account takeover, and fraudulent actions. These are the most critical vulnerabilities you can find.

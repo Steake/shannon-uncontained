@@ -7,7 +7,7 @@
 import { $, fs, path } from 'zx';
 import chalk from 'chalk';
 // import { query } from '@anthropic-ai/claude-agent-sdk';
-import { query } from './llm-client.js';
+import { query, detectGarbledOutput } from './llm-client.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
@@ -70,6 +70,16 @@ async function validateAgentOutput(result, agentName, sourceDir) {
       return false;
     }
 
+    // Check for garbled/corrupted output
+    if (result.result && typeof result.result === 'string') {
+      const garbledCheck = detectGarbledOutput(result.result);
+      if (garbledCheck.isGarbled) {
+        console.log(chalk.yellow(`    ⚠️ Garbled output detected: ${garbledCheck.reason}`));
+        console.log(chalk.red(`    ❌ Validation failed: Output appears corrupted`));
+        return false;
+      }
+    }
+
     // Get validator function for this agent
     const validator = AGENT_VALIDATORS[agentName];
 
@@ -99,7 +109,7 @@ async function validateAgentOutput(result, agentName, sourceDir) {
   }
 }
 
-// Pure function: Run Claude Code with SDK - Maximum Autonomy
+// Pure function: Run LLM with SDK - Maximum Autonomy
 // WARNING: This is a low-level function. Use runClaudePromptWithRetry() for agent execution to ensure:
 // - Retry logic and error handling
 // - Output validation
@@ -140,7 +150,7 @@ async function runClaudePrompt(prompt, sourceDir, allowedTools = 'Read', context
     const logDir = generateSessionLogPath(sessionMetadata.webUrl, sessionMetadata.id);
     logFilePath = path.join(logDir, `${timestamp}_${agentName}_attempt-${attemptNumber}.log`);
   } else {
-    console.log(chalk.blue(`  🤖 Running Claude Code: ${description}...`));
+    console.log(chalk.blue(`  🤖 Running LLM: ${description}...`));
   }
 
   // Declare variables that need to be accessible in both try and catch blocks
@@ -449,7 +459,7 @@ async function runClaudePrompt(prompt, sourceDir, allowedTools = 'Read', context
       console.log(chalk.green(`${prefix} ✅ Complete (${turnCount} turns, ${formatDuration(duration)})`));
     } else if (!useCleanOutput) {
       // Verbose completion for remaining agents
-      console.log(chalk.green(`  ✅ Claude Code completed: ${description} (${turnCount} turns) in ${formatDuration(duration)}`));
+      console.log(chalk.green(`  ✅ LLM completed: ${description} (${turnCount} turns) in ${formatDuration(duration)}`));
     }
 
     // Return result with log file path for all agents
@@ -504,7 +514,7 @@ async function runClaudePrompt(prompt, sourceDir, allowedTools = 'Read', context
       console.log(chalk.red(`${prefix} ❌ Failed (${formatDuration(duration)})`));
     } else if (!useCleanOutput) {
       // Verbose error for remaining agents
-      console.log(chalk.red(`  ❌ Claude Code failed: ${description} (${formatDuration(duration)})`));
+      console.log(chalk.red(`  ❌ LLM failed: ${description} (${formatDuration(duration)})`));
     }
     console.log(chalk.red(`    Error Type: ${error.constructor.name}`));
     console.log(chalk.red(`    Message: ${error.message}`));

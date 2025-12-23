@@ -162,20 +162,48 @@ async function interpolateVariables(template, variables, config = null) {
       if (config.authentication?.login_flow) {
         const loginInstructions = await buildLoginInstructions(config.authentication);
         result = result.replace(/{{LOGIN_INSTRUCTIONS}}/g, loginInstructions);
+        // Build auth context from config
+        const authContext = `Login type: ${config.authentication.login_type || 'N/A'}\nCredentials provided: ${config.authentication.credentials ? 'Yes' : 'No'}`;
+        result = result.replace(/{{AUTH_CONTEXT}}/g, authContext);
       } else {
         result = result.replace(/{{LOGIN_INSTRUCTIONS}}/g, '');
+        result = result.replace(/{{AUTH_CONTEXT}}/g, 'No authentication configuration provided');
       }
     } else {
       // Replace the entire rules section with a clean message when no config provided
       const cleanRulesSection = '<rules>\nNo specific rules or focus areas provided for this test.\n</rules>';
       result = result.replace(/<rules>[\s\S]*?<\/rules>/g, cleanRulesSection);
       result = result.replace(/{{LOGIN_INSTRUCTIONS}}/g, '');
+      result = result.replace(/{{AUTH_CONTEXT}}/g, 'No authentication configuration provided');
     }
 
-    // Validate that all placeholders have been replaced (excluding instructional text)
-    const remainingPlaceholders = result.match(/\{\{[^}]+\}\}/g);
-    if (remainingPlaceholders) {
-      console.log(chalk.yellow(`⚠️ Warning: Found unresolved placeholders in prompt: ${remainingPlaceholders.join(', ')}`));
+    // Replace GITHUB_URL with repo path or fallback
+    result = result.replace(/{{GITHUB_URL}}/g, variables.repoPath || 'Local repository (no GitHub URL)');
+
+    // Handle BLACKBOX_CONTEXT - only populate for blackbox mode (synthetic code)
+    if (variables.isBlackbox) {
+      // Load blackbox context content for synthetic code repositories
+      try {
+        const blackboxContextPath = path.join(path.dirname(path.dirname(__dirname)), 'prompts', 'shared', 'blackbox-context.txt');
+        const blackboxContent = await fs.readFile(blackboxContextPath, 'utf8');
+        result = result.replace(/{{BLACKBOX_CONTEXT}}/g, blackboxContent);
+      } catch (error) {
+        // Fallback if file not found
+        result = result.replace(/{{BLACKBOX_CONTEXT}}/g, 'Black-box mode: Source code is synthetic/inferred. Focus on HTTP testing over code analysis.');
+      }
+    } else {
+      // Whitebox mode - remove the blackbox context placeholder entirely
+      // Also remove the surrounding <blackbox_context> tags if empty
+      result = result.replace(/<blackbox_context>\s*{{BLACKBOX_CONTEXT}}\s*<\/blackbox_context>/g, '');
+      result = result.replace(/{{BLACKBOX_CONTEXT}}/g, '');
+    }
+
+    // Validate that all placeholders have been replaced (excluding instructional text and payload examples)
+    const allPlaceholders = result.match(/\{\{[^}]+\}\}/g) || [];
+    // Only warn for variable-like placeholders (UPPERCASE_WITH_UNDERSCORES), not payload examples like {{7*7}}
+    const variablePlaceholders = allPlaceholders.filter(p => /^\{\{[A-Z][A-Z0-9_]*\}\}$/.test(p));
+    if (variablePlaceholders.length > 0) {
+      console.log(chalk.yellow(`⚠️ Warning: Found unresolved placeholders in prompt: ${variablePlaceholders.join(', ')}`));
     }
 
     return result;

@@ -54,8 +54,8 @@ import { registerAnalysisAgents as _registerAnalysisAgents, ArchitectInferAgent,
 export { ArchitectInferAgent, AuthFlowAnalyzer, DataFlowMapper, VulnHypothesizer, BusinessLogicAgent, _registerAnalysisAgents as registerAnalysisAgents };
 
 // Synthesis Agents
-import { registerSynthesisAgents as _registerSynthesisAgents, SourceGenAgent, SchemaGenAgent, TestGenAgent, DocumentationAgent } from './agents/synthesis/index.js';
-export { SourceGenAgent, SchemaGenAgent, TestGenAgent, DocumentationAgent, _registerSynthesisAgents as registerSynthesisAgents };
+import { registerSynthesisAgents as _registerSynthesisAgents, SourceGenAgent, SchemaGenAgent, TestGenAgent, DocumentationAgent, GroundTruthAgent } from './agents/synthesis/index.js';
+export { SourceGenAgent, SchemaGenAgent, TestGenAgent, DocumentationAgent, GroundTruthAgent, _registerSynthesisAgents as registerSynthesisAgents };
 
 // Scaffold Packs
 export { EXPRESS_SCAFFOLD, FASTAPI_SCAFFOLD, getScaffold, listScaffolds } from './synthesis/scaffold-packs/index.js';

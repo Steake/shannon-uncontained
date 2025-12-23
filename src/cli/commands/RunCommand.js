@@ -11,7 +11,7 @@ import { BudgetManager } from '../../core/BudgetManager.js';
 import { EpistemicLedger } from '../../core/EpistemicLedger.js';
 
 // Import orchestration logic (preserving existing imports)
-import { runPhase } from '../../checkpoint-manager.js';
+import { runPhase, rollbackTo } from '../../checkpoint-manager.js';
 import { runClaudePromptWithRetry } from '../../ai/claude-executor.js';
 import { loadPrompt } from '../../prompts/prompt-manager.js';
 import { executePreReconPhase } from '../../phases/pre-recon.js';
@@ -104,7 +104,15 @@ export async function runCommand(target, options) {
         // Session Creation
         // We attach the WorldModel reference to the session if possible, 
         // or just pass it down to agents.
-        const session = await createSession(target, repoPath, options.config, sourceDir);
+        const session = await createSession(target, repoPath, options.config, sourceDir, options.resume || !!options.restore);
+
+        // Mark session as blackbox mode for conditional prompt loading
+        session.isBlackbox = isBlackbox;
+
+        // Handle Restore Request
+        if (options.restore) {
+            await rollbackTo(options.restore, session);
+        }
 
         // EXECUTION LOOP
         // Pass worldModel and budget to the phase runners
@@ -177,14 +185,14 @@ async function executePipeline(webUrl, sourceDir, session, distributedConfig, to
 
     if (nextAgent.order <= 13) {
         await assembleFinalReport(sourceDir);
-        await runClaudePromptWithRetry(await loadPrompt('report-executive', variables, distributedConfig, pipelineTestingMode), sourceDir, '*', '', 'Report', 'report', chalk.cyan, { id: session.id });
+        await runClaudePromptWithRetry(await loadPrompt('report-executive', variables, distributedConfig, pipelineTestingMode), sourceDir, '*', '', 'Report', 'report', chalk.cyan, session);
         budget.track('toolInvocations', 1);
         await updateSessionWithProgress(session, 'report');
     }
 
     // Save World Model at end (best-effort; do not crash pipeline if this fails)
     try {
-        await worldModel.export(path.join(workspace, 'world-model.json'));
+        await worldModel.export('world-model.json');
     } catch (error) {
         const exportPath = path.join(workspace, 'world-model.json');
         console.warn(

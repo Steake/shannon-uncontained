@@ -28,6 +28,10 @@ Success criterion: Complete source-to-sink traces detailing path, sanitizers, si
 {{LOGIN_INSTRUCTIONS}}
 </login_instructions>
 
+<blackbox_context>
+{{BLACKBOX_CONTEXT}}
+</blackbox_context>
+
 <critical>
 **Your Professional Standard**
 -   **Severity Context:** A structural flaw in a backend command, whether an SQL query or a shell command, is one of the most severe classes of vulnerability in a SaaS application. It undermines the foundational trust of the system by creating the *potential* for data exposure (SQLi) or direct server compromise (Command Injection).

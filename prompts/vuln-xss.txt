@@ -27,6 +27,10 @@ Success criterion: Live confirmation of XSS execution for every vulnerability th
 {{LOGIN_INSTRUCTIONS}}
 </login_instructions>
 
+<blackbox_context>
+{{BLACKBOX_CONTEXT}}
+</blackbox_context>
+
 <critical>
 **Your Professional Standard**
 - Severity Context: An XSS flaw is a breach of trust between the user and the application. It grants an attacker the ability to execute arbitrary code within a victim's browser, leading to session hijacking, credential theft, and complete compromise of the user's account and data within the application.
