@@ -3,30 +3,31 @@
  */
 
 export const EXPRESS_SCAFFOLD = {
-    name: 'express',
-    framework: 'Express.js',
-    language: 'javascript',
+  name: 'express',
+  framework: 'Express.js',
+  language: 'javascript',
 
-    /**
-     * Project structure template
-     */
-    structure: {
-        'package.json': 'package',
-        'app.js': 'app',
-        'routes/index.js': 'routes_index',
-        'routes/api.js': 'routes_api',
-        'middleware/auth.js': 'middleware_auth',
-        'middleware/error.js': 'middleware_error',
-        'models/index.js': 'models_index',
-        'controllers/index.js': 'controllers_index',
-        'config/index.js': 'config',
-    },
+  /**
+   * Project structure template
+   */
+  structure: {
+    'package.json': 'package',
+    'app.js': 'app',
+    'routes/index.js': 'routes_index',
+    'routes/api.js': 'routes_api',
+    'middleware/auth.js': 'middleware_auth',
+    'middleware/error.js': 'middleware_error',
+    'models/index.js': 'models_index',
+    'controllers/index.js': 'controllers_index',
+    'config/index.js': 'config',
+    'eslint.config.js': 'eslint_config',
+  },
 
-    /**
-     * Templates
-     */
-    templates: {
-        package: (config) => `{
+  /**
+   * Templates
+   */
+  templates: {
+    package: (config) => `{
   "name": "${config.name || 'generated-api'}",
   "version": "1.0.0",
   "description": "Auto-generated Express API from LSG v2",
@@ -43,16 +44,16 @@ export const EXPRESS_SCAFFOLD = {
     "morgan": "^1.10.0",
     "dotenv": "^16.3.1"${config.auth?.mechanism === 'jwt' ? ',\n    "jsonwebtoken": "^9.0.2",\n    "bcryptjs": "^2.4.3"' : ''}
   },
-  "devDependencies": {
     "nodemon": "^3.0.2",
     "jest": "^29.7.0",
-    "supertest": "^6.3.3"
+    "supertest": "^6.3.3",
+    "globals": "^15.0.0"
   },
   "lsg_generated": true,
   "lsg_version": "2.0.0"
 }`,
 
-        app: (config) => `/**
+    app: (config) => `/**
  * Express Application - LSG v2 Generated
  * 
  * Generated from TargetModel with ${config.endpoints?.length || 0} endpoints
@@ -97,20 +98,20 @@ app.listen(PORT, () => {
 module.exports = app;
 `,
 
-        routes_api: (config) => {
-            const routes = config.endpoints || [];
-            let routeHandlers = routes.map(ep => {
-                const method = (ep.method || 'get').toLowerCase();
-                const path = ep.path || '/';
-                const handler = generateHandler(ep);
-                return `
+    routes_api: (config) => {
+      const routes = config.endpoints || [];
+      let routeHandlers = routes.map(ep => {
+        const method = (ep.method || 'get').toLowerCase();
+        const path = ep.path || '/';
+        const handler = generateHandler(ep);
+        return `
 // ${ep.description || `${method.toUpperCase()} ${path}`}
 // Evidence: ${ep.evidence_refs?.length || 0} sources
 // Confidence: ${(ep.confidence || 0.5).toFixed(2)}
 router.${method}('${path}', ${handler});`;
-            }).join('\n');
+      }).join('\n');
 
-            return `/**
+      return `/**
  * API Routes - LSG v2 Generated
  */
 
@@ -122,9 +123,9 @@ ${routeHandlers}
 
 module.exports = router;
 `;
-        },
+    },
 
-        routes_index: () => `/**
+    routes_index: () => `/**
  * Routes Index - LSG v2 Generated
  */
 
@@ -138,9 +139,9 @@ router.get('/', (req, res) => {
 module.exports = router;
 `,
 
-        middleware_auth: (config) => {
-            if (config.auth?.mechanism === 'jwt') {
-                return `/**
+    middleware_auth: (config) => {
+      if (config.auth?.mechanism === 'jwt') {
+        return `/**
  * JWT Authentication Middleware - LSG v2 Generated
  */
 
@@ -170,9 +171,9 @@ function generateToken(payload) {
 
 module.exports = { authenticate, generateToken };
 `;
-            }
+      }
 
-            return `/**
+      return `/**
  * Authentication Middleware Stub - LSG v2 Generated
  * 
  * Auth mechanism: ${config.auth?.mechanism || 'unknown'}
@@ -187,9 +188,9 @@ function authenticate(req, res, next) {
 
 module.exports = { authenticate };
 `;
-        },
+    },
 
-        middleware_error: () => `/**
+    middleware_error: () => `/**
  * Error Handler Middleware - LSG v2 Generated
  */
 
@@ -211,9 +212,9 @@ function errorHandler(err, req, res, next) {
 module.exports = errorHandler;
 `,
 
-        models_index: (config) => {
-            const models = config.models || [];
-            return `/**
+    models_index: (config) => {
+      const models = config.models || [];
+      return `/**
  * Models Index - LSG v2 Generated
  * 
  * Inferred models: ${models.length}
@@ -231,9 +232,9 @@ class ${m.name} {
 
 module.exports = { ${models.map(m => m.name).join(', ')} };
 `;
-        },
+    },
 
-        controllers_index: () => `/**
+    controllers_index: () => `/**
  * Controllers Index - LSG v2 Generated
  */
 
@@ -243,7 +244,7 @@ module.exports = { ${models.map(m => m.name).join(', ')} };
 module.exports = {};
 `,
 
-        config: () => `/**
+    config: () => `/**
  * Configuration - LSG v2 Generated
  */
 
@@ -253,66 +254,94 @@ module.exports = {
   jwtSecret: process.env.JWT_SECRET || 'change-in-production',
 };
 `,
-    },
+
+    eslint_config: () => `/**
+ * ESLint Configuration - LSG v2 Generated
+ */
+
+const js = require("@eslint/js");
+const globals = require("globals");
+
+module.exports = [
+    js.configs.recommended,
+    {
+        files: ["**/*.js"],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: "commonjs",
+            globals: {
+                ...globals.node,
+                ...globals.jest
+            }
+        },
+        rules: {
+            "no-unused-vars": "warn",
+            "no-console": "off",
+            "no-undef": "error"
+        }
+    }
+];
+`,
+  },
 };
 
 /**
  * Generate route handler code
  */
 function generateHandler(endpoint) {
-    const method = (endpoint.method || 'GET').toUpperCase();
-    const params = endpoint.params || [];
+  const method = (endpoint.method || 'GET').toUpperCase();
+  const params = endpoint.params || [];
 
-    const queryParams = params.filter(p => p.location === 'query');
-    const bodyParams = params.filter(p => p.location === 'body');
-    const pathParams = params.filter(p => p.location === 'path');
+  const queryParams = params.filter(p => p.location === 'query');
+  const bodyParams = params.filter(p => p.location === 'body');
+  const pathParams = params.filter(p => p.location === 'path');
 
-    let handler = '(req, res) => {\n';
+  let handler = '(req, res) => {\n';
 
-    // Extract params
-    if (queryParams.length > 0) {
-        handler += `    const { ${queryParams.map(p => p.name).join(', ')} } = req.query;\n`;
-    }
-    if (bodyParams.length > 0) {
-        handler += `    const { ${bodyParams.map(p => p.name).join(', ')} } = req.body;\n`;
-    }
-    if (pathParams.length > 0) {
-        handler += `    const { ${pathParams.map(p => p.name).join(', ')} } = req.params;\n`;
-    }
+  // Extract params
+  if (queryParams.length > 0) {
+    handler += `    const { ${queryParams.map(p => p.name).join(', ')} } = req.query;\n`;
+  }
+  if (bodyParams.length > 0) {
+    handler += `    const { ${bodyParams.map(p => p.name).join(', ')} } = req.body;\n`;
+  }
+  if (pathParams.length > 0) {
+    handler += `    const { ${pathParams.map(p => p.name).join(', ')} } = req.params;\n`;
+  }
 
-    // Response based on method
-    if (method === 'GET') {
-        handler += `    
+  // Response based on method
+  if (method === 'GET') {
+    handler += `    
     // TODO: Implement data retrieval
     res.json({ 
       message: 'GET ${endpoint.path}',
       data: {} 
     });`;
-    } else if (method === 'POST') {
-        handler += `    
+  } else if (method === 'POST') {
+    handler += `    
     // TODO: Implement creation logic
     res.status(201).json({ 
       message: 'Created',
       data: { ${bodyParams.map(p => p.name).join(', ')} }
     });`;
-    } else if (method === 'PUT' || method === 'PATCH') {
-        handler += `    
+  } else if (method === 'PUT' || method === 'PATCH') {
+    handler += `    
     // TODO: Implement update logic
     res.json({ 
       message: 'Updated',
       data: { ${[...pathParams, ...bodyParams].map(p => p.name).join(', ')} }
     });`;
-    } else if (method === 'DELETE') {
-        handler += `    
+  } else if (method === 'DELETE') {
+    handler += `    
     // TODO: Implement deletion logic
     res.json({ message: 'Deleted' });`;
-    } else {
-        handler += `    
+  } else {
+    handler += `    
     res.json({ message: '${method} ${endpoint.path}' });`;
-    }
+  }
 
-    handler += '\n  }';
-    return handler;
+  handler += '\n  }';
+  return handler;
 }
 
 export default EXPRESS_SCAFFOLD;
