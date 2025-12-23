@@ -9,6 +9,8 @@ import { BaseAgent } from '../base-agent.js';
 import { runToolWithRetry, isToolAvailable, getToolTimeout } from '../../tools/runners/tool-runner.js';
 import { normalizeNmap } from '../../tools/normalizers/evidence-normalizers.js';
 import { EVENT_TYPES, createEvidenceEvent } from '../../worldmodel/evidence-graph.js';
+import { access } from 'node:fs/promises';
+import { constants } from 'node:fs';
 
 export class NetReconAgent extends BaseAgent {
     constructor(options = {}) {
@@ -85,10 +87,8 @@ export class NetReconAgent extends BaseAgent {
         let nmapBin = 'nmap';
         try {
             const brewPath = '/usr/local/Cellar/nmap/7.95_1/bin/nmap';
-            const { fs } = await import('zx');
-            if (await fs.pathExists(brewPath)) {
-                nmapBin = brewPath;
-            }
+            await access(brewPath, constants.X_OK);
+            nmapBin = brewPath;
         } catch (e) { }
 
         this.setStatus(`Scanning ${hostname} (${nmapBin} ${flags})...`);
@@ -103,7 +103,7 @@ export class NetReconAgent extends BaseAgent {
 
         // FALLBACK: If nmap fails due to missing NSE scripts (common on some installs), try without version detection
         if (!result.success && (result.stderr?.includes('nse_main.lua') || result.error?.includes('nse_main.lua'))) {
-            const fallbackCommand = `nmap -p ${ports} --open ${hostname}`;
+            const fallbackCommand = `${nmapBin} -p ${ports} --open ${hostname}`;
             // We can't use console.log easily here without breaking CLI, but the agent will just succeed silently with fallback
             this.setStatus('NSE missing. Falling back to port scan...');
             result = await runToolWithRetry(fallbackCommand, {
