@@ -90,7 +90,17 @@ export class NetReconAgent extends BaseAgent {
             timeout: getToolTimeout('nmap'),
         });
 
-        console.error('DEBUG NETRECON RESULT:', JSON.stringify({ success: result.success, exitCode: result.exitCode, stderr: result.stderr }, null, 2));
+        // DEBUG TO FILE
+        try {
+            const { writeFile } = await import('node:fs/promises');
+            await writeFile('debug-netrecon.json', JSON.stringify({
+                command,
+                success: result.success,
+                stdout: result.stdout,
+                stderr: result.stderr,
+                error: result.error
+            }, null, 2));
+        } catch (e) { }
 
         // FALLBACK: If nmap fails due to missing NSE scripts (common on some installs), try without version detection
         if (!result.success && (result.stderr?.includes('nse_main.lua') || result.error?.includes('nse_main.lua'))) {
