@@ -8,8 +8,19 @@ import { TechFingerprinterAgent } from './tech-fingerprinter-agent.js';
 import { JSHarvesterAgent } from './js-harvester-agent.js';
 import { APIDiscovererAgent } from './api-discoverer-agent.js';
 import { SubdomainHunterAgent } from './subdomain-hunter-agent.js';
+import { ContentDiscoveryAgent } from './content-discovery-agent.js';
+import { SecretScannerAgent } from './secret-scanner-agent.js';
 
-export { NetReconAgent, CrawlerAgent, TechFingerprinterAgent, JSHarvesterAgent, APIDiscovererAgent, SubdomainHunterAgent };
+export {
+    NetReconAgent,
+    CrawlerAgent,
+    TechFingerprinterAgent,
+    JSHarvesterAgent,
+    APIDiscovererAgent,
+    SubdomainHunterAgent,
+    ContentDiscoveryAgent,
+    SecretScannerAgent
+};
 
 /**
  * Register all recon agents with orchestrator
@@ -22,5 +33,7 @@ export function registerReconAgents(orchestrator) {
     orchestrator.registerAgent(new JSHarvesterAgent());
     orchestrator.registerAgent(new APIDiscovererAgent());
     orchestrator.registerAgent(new SubdomainHunterAgent());
+    orchestrator.registerAgent(new ContentDiscoveryAgent());
+    orchestrator.registerAgent(new SecretScannerAgent());
 }
 

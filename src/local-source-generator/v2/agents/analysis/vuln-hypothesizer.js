@@ -18,6 +18,15 @@ export class VulnHypothesizer extends BaseAgent {
             required: ['target'],
             properties: {
                 target: { type: 'string' },
+                sourceDir: {
+                    type: 'string',
+                    description: 'Path to LSG source directory for ground-truth validation'
+                },
+                applyGroundTruth: {
+                    type: 'boolean',
+                    default: true,
+                    description: 'Filter hypotheses by ground-truth validation results'
+                }
             },
         };
 
@@ -26,11 +35,12 @@ export class VulnHypothesizer extends BaseAgent {
             properties: {
                 hypotheses: { type: 'array' },
                 priority_queue: { type: 'array' },
+                groundTruthFiltered: { type: 'number' },
             },
         };
 
         this.requires = {
-            evidence_kinds: ['endpoint_discovered', 'tech_detection'],
+            evidence_kinds: ['endpoint_discovered', 'tech_detection', 'ground_truth_probed'],
             model_nodes: ['endpoint', 'component', 'auth_flow'],
         };
 
@@ -96,21 +106,55 @@ export class VulnHypothesizer extends BaseAgent {
     }
 
     async run(ctx, inputs) {
-        const { target } = inputs;
+        const { target, sourceDir, applyGroundTruth = true } = inputs;
 
         const results = {
             hypotheses: [],
             priority_queue: [],
             owasp_coverage: {},
+            groundTruthFiltered: 0,
         };
 
+        // Load ground-truth validation if available
+        let groundTruthMap = new Map();
+        if (applyGroundTruth && sourceDir) {
+            groundTruthMap = await this.loadGroundTruth(sourceDir);
+        }
+
         // Gather evidence
-        const endpoints = ctx.targetModel.getEndpoints();
+        let endpoints = ctx.targetModel.getEndpoints();
+
+        // Filter endpoints by ground-truth accessibility
+        if (groundTruthMap.size > 0) {
+            const originalCount = endpoints.length;
+            endpoints = endpoints.filter(ep => {
+                const path = ep.attributes.path || '';
+                const gtResult = groundTruthMap.get(path);
+
+                // Keep if: no ground-truth data, or accessible
+                if (!gtResult) return true;
+
+                const accessible = gtResult.classification === 'ACCESSIBLE' ||
+                    gtResult.classification === 'REDIRECT';
+
+                if (!accessible) {
+                    // Update claim confidence via ledger for filtered endpoints
+                    const claimId = ctx.ledger.generateClaimId('vulnerability_hypothesized', path);
+                    if (ctx.ledger.getClaim(claimId)) {
+                        ctx.ledger.addEvidence(claimId, 'active_probe_fail', 1.0, 'ground-truth-filter');
+                    }
+                }
+
+                return accessible;
+            });
+            results.groundTruthFiltered = originalCount - endpoints.length;
+        }
+
         const dataFlowClaims = ctx.ledger.getClaimsByType(CLAIM_TYPES.DATA_FLOW);
         const authClaims = ctx.ledger.getClaimsByType(CLAIM_TYPES.AUTH_MECHANISM);
         const techEvents = ctx.evidenceGraph.getEventsByType('tech_detection');
 
-        // Pattern-based hypothesis generation
+        // Pattern-based hypothesis generation (on filtered endpoints)
         const patternHypotheses = this.generatePatternHypotheses(endpoints);
 
         // Use LLM for deeper analysis
@@ -174,6 +218,37 @@ export class VulnHypothesizer extends BaseAgent {
         }
 
         return results;
+    }
+
+    /**
+     * Load ground-truth validation results from JSON file
+     * @param {string} sourceDir - Path to LSG source directory
+     * @returns {Map} Map of path -> { status, classification, authRequired }
+     */
+    async loadGroundTruth(sourceDir) {
+        const groundTruthMap = new Map();
+
+        try {
+            const { fs, path } = await import('zx');
+            const gtPath = path.join(sourceDir, 'deliverables', 'ground_truth_validation.json');
+
+            if (await fs.pathExists(gtPath)) {
+                const data = await fs.readJson(gtPath);
+
+                for (const result of data.probeResults || []) {
+                    const route = result.route || new URL(result.url).pathname;
+                    groundTruthMap.set(route, {
+                        status: result.status,
+                        classification: result.behavior?.classification || result.classification,
+                        authRequired: result.behavior?.authRequired || false
+                    });
+                }
+            }
+        } catch (error) {
+            // Ground-truth file not available, continue without filtering
+        }
+
+        return groundTruthMap;
     }
 
     generatePatternHypotheses(endpoints) {

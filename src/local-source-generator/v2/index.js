@@ -57,6 +57,10 @@ export { ArchitectInferAgent, AuthFlowAnalyzer, DataFlowMapper, VulnHypothesizer
 import { registerSynthesisAgents as _registerSynthesisAgents, SourceGenAgent, SchemaGenAgent, TestGenAgent, DocumentationAgent, GroundTruthAgent } from './agents/synthesis/index.js';
 export { SourceGenAgent, SchemaGenAgent, TestGenAgent, DocumentationAgent, GroundTruthAgent, _registerSynthesisAgents as registerSynthesisAgents };
 
+// Exploitation Agents
+import { registerExploitationAgents as _registerExploitationAgents, NucleiScanAgent, MetasploitAgent, SQLmapAgent } from './agents/exploitation/index.js';
+export { NucleiScanAgent, MetasploitAgent, SQLmapAgent, _registerExploitationAgents as registerExploitationAgents };
+
 // Scaffold Packs
 export { EXPRESS_SCAFFOLD, FASTAPI_SCAFFOLD, getScaffold, listScaffolds } from './synthesis/scaffold-packs/index.js';
 
@@ -84,6 +88,7 @@ export function createLSGv2(options = {}) {
     _registerReconAgents(orchestrator);
     _registerAnalysisAgents(orchestrator);
     _registerSynthesisAgents(orchestrator);
+    _registerExploitationAgents(orchestrator); // NEW: Exploitation phase
 
     return orchestrator;
 }
