@@ -7,6 +7,9 @@
 import { $ } from 'zx';
 import chalk from 'chalk';
 
+// Silence zx command output to prevent newline spam in CLI
+$.quiet = true;
+
 // Global git operations semaphore to prevent index.lock conflicts during parallel execution
 class GitSemaphore {
   constructor() {
