@@ -17,6 +17,10 @@ import chalk from 'chalk';
 import 'dotenv/config'; // Ensure env vars are loaded even if run directly
 import cliProgress from 'cli-progress';
 
+// Silence zx globally to prevent newline spam in CLI
+$.quiet = true;
+$.verbose = false;
+
 // Import LSGv2
 import { createLSGv2, Orchestrator } from './src/local-source-generator/v2/index.js';
 import { runPreflight, printPreflightResults } from './src/local-source-generator/v2/tools/preflight.js';

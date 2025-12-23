@@ -9,6 +9,7 @@ import chalk from 'chalk';
 
 // Silence zx command output to prevent newline spam in CLI
 $.quiet = true;
+$.verbose = false;
 
 // Check if verbose mode is enabled
 const isVerbose = () => process.env.LSG_VERBOSE || process.argv.includes('--verbose') || process.argv.includes('-v');
