@@ -6,7 +6,7 @@
  */
 
 import { BaseAgent } from '../base-agent.js';
-import { runToolWithRetry, getToolTimeout } from '../../tools/runners/tool-runner.js';
+import { runToolWithRetry, getToolTimeout, isToolAvailable } from '../../tools/runners/tool-runner.js';
 import { normalizeNmap } from '../../tools/normalizers/evidence-normalizers.js';
 import { EVENT_TYPES, createEvidenceEvent } from '../../worldmodel/evidence-graph.js';
 import { access } from 'node:fs/promises';
@@ -89,18 +89,6 @@ export class NetReconAgent extends BaseAgent {
         let result = await runToolWithRetry(command, {
             timeout: getToolTimeout('nmap'),
         });
-
-        // DEBUG TO FILE
-        try {
-            const { writeFile } = await import('node:fs/promises');
-            await writeFile('debug-netrecon.json', JSON.stringify({
-                command,
-                success: result.success,
-                stdout: result.stdout,
-                stderr: result.stderr,
-                error: result.error
-            }, null, 2));
-        } catch (e) { }
 
         // FALLBACK: If nmap fails due to missing NSE scripts (common on some installs), try without version detection
         if (!result.success && (result.stderr?.includes('nse_main.lua') || result.error?.includes('nse_main.lua'))) {
