@@ -14,6 +14,7 @@ import { $ } from 'zx';
 import { fs, path, which } from 'zx';
 import { fileURLToPath } from 'url';
 import chalk from 'chalk';
+import 'dotenv/config'; // Ensure env vars are loaded even if run directly
 import cliProgress from 'cli-progress';
 
 // Import LSGv2

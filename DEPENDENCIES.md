@@ -2,6 +2,16 @@
 
 Shannon relies on several external security tools to perform reconnaissance and exploitation. These tools must be installed and available in the system PATH.
 
+## Quick Start
+
+We provide a setup script to verify your environment:
+
+```bash
+./setup.sh
+```
+
+This script checks for Node.js, Go, Python, Nmap (with NSE), and other required tools.
+
 ## Required Tools
 
 ### 1. Nmap (Network Mapper)
