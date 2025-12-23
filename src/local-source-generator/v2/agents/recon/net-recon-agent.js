@@ -11,7 +11,8 @@ import { normalizeNmap } from '../../tools/normalizers/evidence-normalizers.js';
 import { EVENT_TYPES, createEvidenceEvent } from '../../worldmodel/evidence-graph.js';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { access, constants } from 'node:fs/promises';
+import { access } from 'node:fs/promises';
+import { constants } from 'node:fs';
 
 const execFileAsync = promisify(execFile);
 
@@ -55,6 +56,7 @@ export class NetReconAgent extends BaseAgent {
     }
 
     async resolveNmap() {
+        console.error('DEBUG: resolving nmap...');
         const candidates = [
             'nmap', // PATH
             '/usr/local/bin/nmap', // Intel Mac / Linux
@@ -82,6 +84,7 @@ export class NetReconAgent extends BaseAgent {
 
                 return bin;
             } catch (e) {
+                console.error(`DEBUG: candidate ${bin} failed: ${e.message}`);
                 // continue
             }
         }
