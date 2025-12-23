@@ -109,7 +109,7 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
         if (b) {
             // clean status string
             let cleanStatus = status.length > 50 ? status.substring(0, 47) + '...' : status;
-            b.update(50, { status: cleanStatus }); // Arbitrary 50% for "running"
+            b.update(50, { agent: chalk.cyan(agent.padEnd(20)), status: cleanStatus }); // Arbitrary 50% for "running"
         }
     });
 
@@ -117,10 +117,10 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
     orchestrator.on('agent:complete', ({ agent, result }) => {
         const b = agentBars.get(agent);
         if (b) {
-            const icon = result.success ? '✅' : '❌';
-            const statusMsg = result.success ? 'Done' : (result.error || 'Failed');
+            const statusMsg = result.success ? 'Success' : (result.error || 'Failed');
 
             b.update(100, {
+                agent: chalk.cyan(agent.padEnd(20)),
                 status: result.success ? chalk.green('Success') : chalk.red(statusMsg)
             });
             b.stop();
