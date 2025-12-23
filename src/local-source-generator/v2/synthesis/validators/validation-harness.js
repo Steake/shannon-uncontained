@@ -53,7 +53,22 @@ const VALIDATORS = {
                 return new ValidationResult({ stage: 'lint', passed: true, warnings: ['ESLint not available'] });
             }
 
-            const result = await runTool(`npx eslint --format json "${filePath}"`, { timeout: 30000 });
+            // Extract project directory from file path (look for eslint.config.js)
+            const { dirname, resolve } = await import('path');
+            const { existsSync } = await import('fs');
+            let projectDir = dirname(resolve(filePath));
+            // Walk up to find eslint.config.js
+            for (let i = 0; i < 5; i++) {
+                if (existsSync(resolve(projectDir, 'eslint.config.js'))) break;
+                const parent = dirname(projectDir);
+                if (parent === projectDir) break;
+                projectDir = parent;
+            }
+
+            const result = await runTool(`npx eslint --format json "${filePath}"`, {
+                timeout: 30000,
+                cwd: projectDir
+            });
 
             let errors = [];
             let warnings = [];
