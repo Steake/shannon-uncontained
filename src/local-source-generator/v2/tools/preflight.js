@@ -158,6 +158,15 @@ const TOOL_REGISTRY = {
     },
 
     // Metasploit
+    msfrpcd: {
+        check: 'msfrpcd -h',
+        required: false,
+        category: 'exploitation',
+        install: {
+            macos: 'brew install metasploit',
+            ubuntu: 'curl https://raw.githubusercontent.com/rapid7/metasploit-omnibus/master/config/templates/metasploit-framework-wrappers/msfupdate.erb > msfinstall && chmod 755 msfinstall && ./msfinstall'
+        }
+    },
     msfconsole: {
         check: 'msfconsole -v',
         required: false,

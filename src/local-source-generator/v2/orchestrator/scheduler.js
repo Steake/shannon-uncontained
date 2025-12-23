@@ -279,6 +279,7 @@ export class Orchestrator extends EventEmitter {
                 'ContentDiscoveryAgent',
                 'SecretScannerAgent',
                 'WAFDetector',
+                'MetasploitRecon', // Auxiliary scanners
             ], { parallel: true, required: false }),
 
             // Phase 2: Analysis  
@@ -298,6 +299,7 @@ export class Orchestrator extends EventEmitter {
                 'SQLmapAgent',
                 'XSSValidatorAgent',
                 'CommandInjectionAgent',
+                'MetasploitExploit', // Active exploitation
             ], { parallel: true, required: false }),
 
             // Phase 4: Synthesis
