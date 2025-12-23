@@ -349,6 +349,7 @@ export class Orchestrator extends EventEmitter {
                 'SchemaGenAgent',
                 'TestGenAgent',
                 'DocumentationAgent',
+                'BlackboxConfigGenAgent',
             ], { parallel: false, required: false }),
         ];
     }
