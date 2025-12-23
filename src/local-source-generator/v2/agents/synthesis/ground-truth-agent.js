@@ -11,7 +11,7 @@ import { fs, path } from 'zx';
 
 export class GroundTruthAgent extends BaseAgent {
     constructor() {
-        super('ground-truth-validator');
+        super('GroundTruthAgent');
 
         this.inputs_schema = {
             type: 'object',

@@ -35,7 +35,7 @@ export class AgentContext {
       max_tokens: budget.max_tokens || 10000,
       max_tool_invocations: budget.max_tool_invocations || 50,
     };
-    
+
     // Tracking
     this.startTime = null;
     this.networkRequests = 0;
@@ -130,6 +130,13 @@ export class AgentContext {
       claims_emitted: this.emittedClaims.length,
     };
   }
+
+  /**
+   * Log message (compatibility)
+   */
+  log(msg) {
+    console.log(msg);
+  }
 }
 
 /**
@@ -139,7 +146,7 @@ export class BaseAgent {
   constructor(name, options = {}) {
     this.name = name;
     this.options = options;
-    
+
     // Must be overridden by subclasses
     this.inputs_schema = null;
     this.outputs_schema = null;
@@ -247,7 +254,7 @@ export class BaseAgent {
 
       // Check budget
       const budgetExceeded = ctx.checkBudget();
-      
+
       return {
         success: true,
         outputs,

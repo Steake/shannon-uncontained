@@ -248,6 +248,13 @@ export class EpistemicLedger {
     }
 
     /**
+     * Generate claim ID (instance proxy)
+     */
+    generateClaimId(claimType, subject, predicate = {}) {
+        return EpistemicLedger.generateClaimId(claimType, subject, predicate);
+    }
+
+    /**
      * Create or update a claim
      * @param {object} claimData - Claim data
      * @returns {Claim} The claim
