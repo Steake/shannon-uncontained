@@ -95,6 +95,23 @@ export class AgentContext {
   }
 
   /**
+   * Update agent status
+   * @param {string} status - Status message
+   */
+  setStatus(status) {
+    // Assuming 'emit' method will be provided by an EventEmitter base class or similar mechanism
+    // For now, we'll log it or store it if no EventEmitter is present.
+    // If this context is intended to be an EventEmitter, it should extend EventEmitter.
+    if (typeof this.emit === 'function') {
+      this.emit('status', status);
+    } else {
+      console.log(`Agent Status: ${status}`);
+      // Optionally store status if no emitter is available
+      // this.currentStatus = status;
+    }
+  }
+
+  /**
    * Emit evidence event
    * @param {object} eventData - Event data
    * @returns {string} Event ID

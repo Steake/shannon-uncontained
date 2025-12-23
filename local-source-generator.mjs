@@ -53,11 +53,9 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
 
     if (!options.quiet) {
         // Show available tools
-        for (const tool of preflightResults.available.slice(0, 5)) {
-            console.log(chalk.green(`  ✅ ${tool} - available`));
-        }
-        if (preflightResults.available.length > 5) {
-            console.log(chalk.gray(`  ... and ${preflightResults.available.length - 5} more`));
+        // Show available tools (ALL of them, per user request)
+        for (const tool of preflightResults.available) {
+            console.log(chalk.green(`  ✅ ${tool.padEnd(20)} - available`));
         }
         if (preflightResults.missing.filter(m => m.required).length > 0) {
             console.log(chalk.yellow(`  ⚠️  Missing required: ${preflightResults.missing.filter(m => m.required).map(m => m.name).join(', ')}`));
@@ -73,40 +71,71 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
         streamDeltas: true,
     });
 
-    // Set up progress tracking
-    const bar = new cliProgress.SingleBar({
-        format: 'Pipeline |' + chalk.cyan('{bar}') + '| {percentage}% | {stage}',
+    // MultiBar Setup
+    const multibar = new cliProgress.MultiBar({
+        clearOnComplete: false,
+        hideCursor: true,
+        format: '{bar} | {agent} | {status}',
         barCompleteChar: '\u2588',
         barIncompleteChar: '\u2591',
-        hideCursor: true
-    }, cliProgress.Presets.shades_classic);
+    }, cliProgress.Presets.shades_grey);
 
-    const stages = ['recon', 'analysis', 'exploitation', 'synthesis'];
-    let currentStageIdx = 0;
-    bar.start(100, 0, { stage: 'Starting...' });
+
+    // Track active bars
+    const agentBars = new Map();
+    const completedAgents = new Set();
 
     // Set up event listeners
+
+    // Stage Start
     orchestrator.on('stage:start', ({ stage }) => {
-        currentStageIdx = stages.indexOf(stage);
-        const progress = Math.round((currentStageIdx / stages.length) * 100);
-        bar.update(progress, { stage: `${stage}...` });
+        if (!options.quiet) console.log(chalk.bold.blue(`\n⚡ Stage: ${stage.toUpperCase()}`));
     });
 
-    orchestrator.on('stage:complete', ({ stage, success, errors }) => {
-        const icon = success ? '✅' : '⚠️';
-        if (!options.quiet && errors.length > 0) {
-            console.log(chalk.yellow(`\n  ${icon} ${stage}: ${errors.length} errors`));
-            for (const err of errors.slice(0, 3)) {
-                console.log(chalk.gray(`     - ${err.agent}: ${err.error?.substring(0, 50) || 'unknown'}`));
+    // Agent Start: Add a bar
+    orchestrator.on('agent:start', ({ agent }) => {
+        if (options.quiet) return;
+        const b = multibar.create(100, 0, {
+            agent: chalk.cyan(agent.padEnd(20)),
+            status: 'Starting...'
+        });
+        agentBars.set(agent, b);
+    });
+
+    // Agent Status Update
+    orchestrator.on('agent:status', ({ agent, status }) => {
+        const b = agentBars.get(agent);
+        if (b) {
+            // clean status string
+            let cleanStatus = status.length > 50 ? status.substring(0, 47) + '...' : status;
+            b.update(50, { status: cleanStatus }); // Arbitrary 50% for "running"
+        }
+    });
+
+    // Agent Complete
+    orchestrator.on('agent:complete', ({ agent, result }) => {
+        const b = agentBars.get(agent);
+        if (b) {
+            const icon = result.success ? '✅' : '❌';
+            const statusMsg = result.success ? 'Done' : (result.error || 'Failed');
+
+            b.update(100, {
+                status: result.success ? chalk.green('Success') : chalk.red(statusMsg)
+            });
+            b.stop();
+            agentBars.delete(agent);
+
+            // If verbose, print detail below (might break layout if not careful, but multibar handles it mostly)
+            if (options.verbose && !result.success) {
+                multibar.log(chalk.red(`  -> ${agent} Error: ${result.error}\n`));
             }
         }
+        completedAgents.add(agent);
     });
 
-    orchestrator.on('agent:complete', ({ agent, result }) => {
-        if (options.verbose) {
-            const icon = result.success ? '✅' : '❌';
-            console.log(chalk.gray(`  ${icon} ${agent}`));
-        }
+    orchestrator.on('stage:complete', ({ stage, errors }) => {
+        // Cleanup any stuck bars for this stage
+        // (Orchestrator usually finishes agents before emitting stage:complete)
     });
 
     // Run full pipeline
@@ -119,14 +148,19 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
             autoStart: true
         };
 
+        // If quiet, don't use bars
+        if (options.quiet) {
+            multibar.stop();
+        }
+
         const result = await orchestrator.runFullPipeline(webUrl, sourceDir, {
             framework: options.framework || 'express',
             msfrpcConfig, // Pass to all agents in inputs
-            excludeAgents: options.noMsf ? ['MetasploitRecon', 'MetasploitExploit'] : []
+            excludeAgents: options.noMsf ? ['MetasploitRecon', 'MetasploitExploit'] : [],
+            quiet: !options.verbose // Silence agents unless verbose
         });
 
-        bar.update(100, { stage: 'Complete!' });
-        bar.stop();
+        multibar.stop();
 
         // Print summary
         console.log(chalk.green('\n✅ Pipeline Complete'));
@@ -154,14 +188,15 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
 
         return sourceDir;
     } catch (error) {
-        bar.stop();
+        multibar.stop();
         console.error(chalk.red(`\n❌ Pipeline failed: ${error.message}`));
         if (options.verbose) {
             console.error(error.stack);
         }
         process.exit(1);
     } finally {
-        process.exit(0);
+        // process.exit(0); // Let node exit naturally or force if needed
+        setTimeout(() => process.exit(0), 100);
     }
 }
 

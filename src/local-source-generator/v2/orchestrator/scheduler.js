@@ -133,6 +133,11 @@ export class Orchestrator extends EventEmitter {
 
         let result;
         try {
+            // Broker status updates
+            ctx.on('status', (status) => {
+                this.emit('agent:status', { agent: agentName, status });
+            });
+
             result = await agent.execute(ctx, inputs);
         } catch (execError) {
             result = { success: false, error: execError.message };

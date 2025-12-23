@@ -120,6 +120,8 @@ program
   .option('--msf-port <port>', 'Metasploit RPC port', parseInt)
   .option('--msf-user <user>', 'Metasploit RPC user')
   .option('--msf-pass <pass>', 'Metasploit RPC password')
+  .option('-p, --parallel <number>', 'Max parallel agents', '4')
+  .option('-v, --verbose', 'Verbose output')
   .action(async (target, options) => {
     const { generateLocalSource } = await import('./local-source-generator.mjs');
 
@@ -139,7 +141,9 @@ program
         msfHost: options.msfHost,
         msfPort: options.msfPort,
         msfUser: options.msfUser,
-        msfPass: options.msfPass
+        msfPass: options.msfPass,
+        parallel: parseInt(options.parallel),
+        verbose: options.verbose
       });
       console.log(chalk.green(`\n✅ Local source generated at: ${result}`));
     } catch (error) {
@@ -154,7 +158,9 @@ program
   .alias('synthesise')
   .description('Run AI synthesis on an existing world model (resume/retry)')
   .argument('<workspace>', 'Workspace directory containing world-model.json')
-  .option('--framework <name>', 'Target framework (express, fastapi)', 'express')
+  .option('-f, --framework <framework>', 'Target framework (express/fastapi)', 'express')
+  .option('-p, --parallel <number>', 'Max parallel agents', '4')
+  .option('--verbose', 'Verbose output')
   .action(async (workspace, options) => {
     console.log(chalk.magenta.bold('🤖 AI SYNTHESIS'));
     console.log(chalk.gray(`Workspace: ${workspace}`));
@@ -192,7 +198,12 @@ program
       const result = await orchestrator.runSynthesis(
         worldModelData,
         workspace,
-        { framework: options.framework }
+        {
+          framework: options.framework,
+          verbose: options.verbose,
+          parallel: parseInt(options.parallel, 10),
+          noMsf: options.noMsf
+        }
       );
 
 
