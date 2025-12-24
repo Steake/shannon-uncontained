@@ -13,7 +13,9 @@ import { fs, path } from 'zx';
 export const displaySplashScreen = async () => {
   try {
     // Get version info from package.json
-    const packagePath = path.join(import.meta.dirname, '..', 'package.json');
+    // Handle import.meta.dirname being undefined in older Node versions
+    const currentDir = import.meta.dirname || new URL('.', import.meta.url).pathname;
+    const packagePath = path.join(currentDir, '..', 'package.json');
     const packageJson = await fs.readJSON(packagePath);
     const version = packageJson.version || '1.0.0';
 

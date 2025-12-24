@@ -41,15 +41,15 @@ This list is not exhaustive of all potential security risks. Shannon does not, f
 | WSTG-CONF-03 | Test File Extensions Handling for Sensitive Information |  |
 | WSTG-CONF-04 | Review Old Backup and Unreferenced Files for Sensitive Information |  |
 | WSTG-CONF-05 | Enumerate Infrastructure and Application Admin Interfaces |  |
-| WSTG-CONF-06 | Test HTTP Methods |  |
-| WSTG-CONF-07 | Test HTTP Strict Transport Security |  |
+| WSTG-CONF-06 | Test HTTP Methods | ✅ |
+| WSTG-CONF-07 | Test HTTP Strict Transport Security | ✅ |
 | WSTG-CONF-08 | Test RIA Cross Domain Policy |  |
 | WSTG-CONF-09 | Test File Permission |  |
 | WSTG-CONF-10 | Test for Subdomain Takeover | ✅ |
 | WSTG-CONF-11 | Test Cloud Storage |  |
 | WSTG-CONF-12 | Testing for Content Security Policy |  |
 | WSTG-CONF-13 | Test Path Confusion |  |
-| WSTG-CONF-14 | Test Other HTTP Security Header Misconfigurations |  |
+| WSTG-CONF-14 | Test Other HTTP Security Header Misconfigurations | ✅ |
 |  |  |  |
 | **WSTG-IDNT** | **Identity Management Testing** |  |
 | WSTG-IDNT-01 | Test Role Definitions | ✅ |
@@ -114,8 +114,8 @@ This list is not exhaustive of all potential security risks. Shannon does not, f
 | WSTG-INPV-20 | Testing for Mass Assignment |  |
 |  |  |  |
 | **WSTG-ERRH** | **Error Handling** |  |
-| WSTG-ERRH-01 | Testing for Improper Error Handling |  |
-| WSTG-ERRH-02 | Testing for Stack Traces |  |
+| WSTG-ERRH-01 | Testing for Improper Error Handling | ✅ |
+| WSTG-ERRH-02 | Testing for Stack Traces | ✅ |
 |  |  |  |
 | **WSTG-CRYP** | **Cryptography** |  |
 | WSTG-CRYP-01 | Testing for Weak Transport Layer Security | ✅ |
@@ -142,9 +142,9 @@ This list is not exhaustive of all potential security risks. Shannon does not, f
 | WSTG-CLNT-04 | Testing for Client-Side URL Redirect | ✅ |
 | WSTG-CLNT-05 | Testing for CSS Injection |  |
 | WSTG-CLNT-06 | Testing for Client-Side Resource Manipulation |  |
-| WSTG-CLNT-07 | Test Cross Origin Resource Sharing |  |
+| WSTG-CLNT-07 | Test Cross Origin Resource Sharing | ✅ |
 | WSTG-CLNT-08 | Testing for Cross Site Flashing |  |
-| WSTG-CLNT-09 | Testing for Clickjacking |  |
+| WSTG-CLNT-09 | Testing for Clickjacking | ✅ |
 | WSTG-CLNT-10 | Testing WebSockets |  |
 | WSTG-CLNT-11 | Test Web Messaging |  |
 | WSTG-CLNT-12 | Test Browser Storage | ✅ |
