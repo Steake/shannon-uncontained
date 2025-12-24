@@ -569,14 +569,18 @@ export class Orchestrator extends EventEmitter {
         const worldModelPath = path.join(outputDir, 'world-model.json');
         if (await fs.pathExists(worldModelPath)) {
             const data = await fs.readJSON(worldModelPath);
-            this.worldModel.load(data);
+            this.targetModel.import(data);
+            if (data.evidence_graph) {
+                this.evidenceGraph.import(data.evidence_graph);
+            }
             console.log(`[Orchestrator] Loaded world-model.json from ${outputDir}`);
         }
 
         // Check if agent exists
-        if (!this.agents.has(agentName)) {
+        const agent = this.registry.get(agentName);
+        if (!agent) {
             // List available agents for help
-            const available = Array.from(this.agents.keys()).join(', ');
+            const available = this.registry.list().join(', ');
             return {
                 success: false,
                 error: `Agent "${agentName}" not found. Available: ${available}`,
@@ -591,7 +595,8 @@ export class Orchestrator extends EventEmitter {
 
         // Save updated world model
         if (result.success) {
-            const exported = this.worldModel.export();
+            const exported = this.targetModel.export();
+            exported.evidence_graph = this.evidenceGraph.export();
             await fs.writeJSON(worldModelPath, exported, { spaces: 2 });
             console.log(`[Orchestrator] World model saved to ${worldModelPath}`);
         }
