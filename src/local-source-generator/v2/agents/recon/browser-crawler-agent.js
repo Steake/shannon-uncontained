@@ -104,29 +104,55 @@ export class BrowserCrawlerAgent extends BaseAgent {
             const discoveredEndpoints = new Set();
             const xhrRequests = [];
 
-            page.on('request', request => {
-                const url = request.url();
+            page.on('response', async response => {
+                const request = response.request();
+                const url = response.url();
                 const method = request.method();
                 const resourceType = request.resourceType();
+                const status = response.status();
 
-                // Capture XHR/fetch requests
                 if (resourceType === 'xhr' || resourceType === 'fetch') {
                     try {
                         const parsed = new URL(url);
                         const path = parsed.pathname + parsed.search;
                         const key = `${method}:${path}`;
 
-                        if (!discoveredEndpoints.has(key)) {
-                            discoveredEndpoints.add(key);
-                            xhrRequests.push({
-                                method,
-                                url,
-                                path,
-                                resourceType,
-                            });
+                        // NOISE FILTERING
+                        const isNoise = [
+                            /\/cdn-cgi\//, /\/_next\/static\//, /\/_vercel\//,
+                            /\.(png|jpg|jpeg|gif|svg|ico|css|woff2?|ttf|eot)$/i,
+                            /google-analytics/, /googletagmanager/, /segment\.io/,
+                            /onetrust/, /hotjar/, /doubleclick/, /facebook\.com\/tr/,
+                        ].some(pattern => pattern.test(path) || pattern.test(url));
 
-                            // Emit endpoint evidence
-                            ctx.emitEvidence({
+                        if (!isNoise && !discoveredEndpoints.has(key)) {
+                            discoveredEndpoints.add(key);
+
+                            // Capture Bodies if JSON
+                            let requestBody = request.postData(); // String or null
+                            let responseBody = null;
+                            const contentType = response.headers()['content-type'] || '';
+
+                            if (contentType.includes('application/json')) {
+                                try {
+                                    responseBody = await response.json();
+                                } catch {
+                                    // Ignore body parse errors
+                                }
+                            }
+
+                            // Store Payloads as Blobs
+                            const blobRefs = [];
+                            if (requestBody) {
+                                blobRefs.push(ctx.evidenceGraph.storeBlob(requestBody, 'application/json')); // Assuming JSON/Text
+                            }
+                            if (responseBody) {
+                                blobRefs.push(ctx.evidenceGraph.storeBlob(JSON.stringify(responseBody), 'application/json'));
+                            }
+
+                            xhrRequests.push({ method, url, path, resourceType, status });
+
+                            ctx.emitEvidence(createEvidenceEvent({
                                 source: this.name,
                                 event_type: EVENT_TYPES.ENDPOINT_DISCOVERED,
                                 target,
@@ -135,12 +161,15 @@ export class BrowserCrawlerAgent extends BaseAgent {
                                     path,
                                     url,
                                     source: 'browser_xhr',
+                                    has_request_body: !!requestBody,
+                                    has_response_body: !!responseBody
                                 },
-                            });
+                                blob_refs: blobRefs
+                            }));
                             results.endpoints_discovered++;
                         }
-                    } catch {
-                        // Invalid URL
+                    } catch (err) {
+                        // Ignore processing errors
                     }
                 }
             });

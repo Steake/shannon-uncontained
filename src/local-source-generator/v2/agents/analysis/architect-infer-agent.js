@@ -51,6 +51,19 @@ export class ArchitectInferAgent extends BaseAgent {
         };
 
         this.llm = getLLMClient();
+
+        // Abstract Framework Fingerprints (Regex -> Framework)
+        this.frameworkSignatures = {
+            'Next.js': [/\/_next\//, /\/_vercel\//],
+            'Nuxt.js': [/\/_nuxt\//],
+            'WordPress': [/\/wp-content\//, /\/wp-includes\//, /\/wp-json\//],
+            'Rails': [/\/assets\/application-[0-9a-f]{64}\.css/, /\/rails\/active_storage/],
+            'Laravel': [/\/storage\/logs\//, /\/vendor\/laravel\//],
+            'React': [/\/static\/js\/main\./, /\/static\/css\/main\./],
+            'Angular': [/inline\.[0-9a-f]+\.bundle\.js/, /main\.[0-9a-f]+\.bundle\.js/],
+            'Vue': [/app\.[0-9a-f]+\.js/, /chunk-vendors\.[0-9a-f]+\.js/],
+            'GraphQL': [/\/.+graphql/, /query=/, /mutation=/], // Generic protocol
+        };
     }
 
     async run(ctx, inputs) {
@@ -67,6 +80,9 @@ export class ArchitectInferAgent extends BaseAgent {
             architecture_type: 'unknown',
             inferences: [],
         };
+
+        // 1. Deterministic Inference via Fingerprinting
+        const { framework, inferredComponents } = this.inferDeterministically(endpoints);
 
         // Build context for LLM
         const endpointSummary = endpoints.map(e => ({
@@ -85,7 +101,7 @@ export class ArchitectInferAgent extends BaseAgent {
         // Use LLM to infer architecture
         ctx.recordTokens(1000); // Estimate
 
-        const prompt = this.buildPrompt(target, endpointSummary, technologies, jsEndpoints);
+        const prompt = this.buildPrompt(target, endpointSummary, technologies, jsEndpoints, framework, inferredComponents);
 
         const response = await this.llm.generateStructured(prompt, this.getOutputSchema(), {
             capability: LLM_CAPABILITIES.INFER_ARCHITECTURE,
@@ -168,10 +184,53 @@ export class ArchitectInferAgent extends BaseAgent {
         return results;
     }
 
-    buildPrompt(target, endpoints, technologies, jsEndpoints) {
+    /**
+     * Deterministically infer framework and components from route patterns
+     */
+    inferDeterministically(endpoints) {
+        let framework = 'unknown';
+        const inferredComponents = [];
+        const paths = endpoints.map(e => e.attributes.path);
+
+        // check signatures
+        for (const [fw, regexes] of Object.entries(this.frameworkSignatures)) {
+            if (paths.some(p => regexes.some(r => r.test(p)))) {
+                framework = fw;
+                break; // First match wins (priority based on object order is loose but okay here)
+            }
+        }
+
+        // Framework-specific component inference
+        if (framework === 'Next.js') {
+            // Infer pages from _next/data
+            paths.forEach(p => {
+                const match = p.match(/\/_next\/data\/[^/]+\/(.+)\.json/);
+                if (match) {
+                    const pageName = match[1];
+                    inferredComponents.push({
+                        name: `Page: ${pageName}`,
+                        type: 'FrontendComponent',
+                        endpoints: [p],
+                        description: `Next.js Page Component for ${pageName}`,
+                        confidence: 0.9
+                    });
+                }
+            });
+        }
+
+        return { framework, inferredComponents };
+    }
+
+    buildPrompt(target, endpoints, technologies, jsEndpoints, framework, inferredComponents) {
         return `Analyze this web application's architecture based on the discovered evidence:
 
 Target: ${target}
+
+## Detected Framework (Fingerprinted):
+${framework !== 'unknown' ? framework : 'None matched'}
+
+## Deterministically Inferred Components:
+${inferredComponents.length > 0 ? JSON.stringify(inferredComponents, null, 2) : 'None'}
 
 ## Discovered Endpoints (${endpoints.length} total):
 ${JSON.stringify(endpoints.slice(0, 50), null, 2)}
@@ -189,6 +248,7 @@ Infer the application architecture by:
 3. Detecting backend services and their relationships
 4. Noting any patterns that suggest specific frameworks or conventions
 
+IMPORTANT: Prioritize the "Detected Framework" and "Inferred Components" if they exist, but feel free to expand on them.
 Be conservative - only claim components you have evidence for.
 Assign confidence scores (0-1) based on evidence strength.`;
     }

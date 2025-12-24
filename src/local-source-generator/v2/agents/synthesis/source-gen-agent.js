@@ -97,12 +97,16 @@ export class SourceGenAgent extends BaseAgent {
         const config = {
             name: new URL(target).hostname.replace(/\./g, '-'),
             target,
-            endpoints: endpoints.map(e => ({
-                path: e.attributes.path,
-                method: e.attributes.method,
-                params: e.attributes.params || [],
-                evidence_refs: e.attributes.evidence_refs || [],
-                confidence: e.claim_refs?.length ? 0.7 : 0.5,
+            endpoints: await Promise.all(endpoints.map(async e => {
+                const enriched = await this.enrichEndpointMetadata(ctx, e);
+                return {
+                    path: e.attributes.path,
+                    method: e.attributes.method,
+                    params: e.attributes.params || [],
+                    evidence_refs: e.attributes.evidence_refs || [],
+                    confidence: e.claim_refs?.length ? 0.7 : 0.5,
+                    ...enriched
+                };
             })),
             auth: authClaims.length > 0 ? authClaims[0].predicate : null,
             models: this.inferModels(endpoints),
@@ -179,6 +183,49 @@ export class SourceGenAgent extends BaseAgent {
         }
 
         return results;
+    }
+
+    /**
+     * Enrich endpoint with semantic data from bodies
+     */
+    async enrichEndpointMetadata(ctx, endpoint) {
+        const metadata = {
+            responseExample: null,
+            requestSchema: null,
+            description: null
+        };
+
+        // Find relevant evidence events
+        const evidenceRefs = endpoint.attributes.evidence_refs || [];
+        for (const refId of evidenceRefs) {
+            const event = ctx.evidenceGraph.getEvent(refId);
+            if (!event || !event.blob_refs || event.blob_refs.length === 0) continue;
+
+            // Retrieve blobs
+            for (const blobId of event.blob_refs) {
+                try {
+                    const blob = await ctx.evidenceGraph.retrieveBlob(blobId);
+                    if (!blob) continue;
+
+                    // Simple heuristic: if it looks like a response body (from browser_xhr)
+                    // We assume the first blob is request, second is response if both exist,
+                    // or rely on event payload flags if we had them.
+                    // For now, let's just try to parse as JSON and use as example
+                    try {
+                        const json = JSON.parse(blob);
+                        // If it has 'data' or is array/object, use as response example
+                        if (!metadata.responseExample) {
+                            metadata.responseExample = JSON.stringify(json, null, 2);
+                        }
+                    } catch {
+                        // Not JSON
+                    }
+                } catch {
+                    // Blob retrieval failed
+                }
+            }
+        }
+        return metadata;
     }
 
     /**
