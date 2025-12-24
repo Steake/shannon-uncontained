@@ -35,10 +35,34 @@ const DEFAULT_ROUTING = {
  */
 export class LLMClient {
     constructor(options = {}) {
+        const provider = process.env.LLM_PROVIDER || 'openai';
+
+        // API key - select based on provider for correct matching
+        let apiKey = process.env.LLM_API_KEY;
+        if (!apiKey) {
+            if (provider === 'openrouter') {
+                apiKey = process.env.OPENROUTER_API_KEY;
+            } else if (provider === 'anthropic') {
+                apiKey = process.env.ANTHROPIC_API_KEY;
+            } else {
+                apiKey = process.env.OPENAI_API_KEY;
+            }
+        }
+        // Fallback chain if provider-specific key not found
+        if (!apiKey) {
+            apiKey = process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY;
+        }
+
+        // Base URL - auto-detect for OpenRouter
+        let baseUrl = process.env.LLM_BASE_URL;
+        if (!baseUrl && provider === 'openrouter') {
+            baseUrl = 'https://openrouter.ai/api/v1';
+        }
+
         this.options = {
-            provider: process.env.LLM_PROVIDER || 'openai',
-            baseUrl: process.env.LLM_BASE_URL,
-            apiKey: process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY,
+            provider,
+            baseUrl,
+            apiKey,
             defaultModel: process.env.LLM_MODEL || 'gpt-4o',
             ...options,
         };

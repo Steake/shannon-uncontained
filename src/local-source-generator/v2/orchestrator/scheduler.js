@@ -573,7 +573,9 @@ export class Orchestrator extends EventEmitter {
             if (data.evidence_graph) {
                 this.evidenceGraph.import(data.evidence_graph);
             }
-            console.log(`[Orchestrator] Loaded world-model.json from ${outputDir}`);
+            // Re-derive entities from evidence (ensures endpoints are populated)
+            this.targetModel.deriveFromEvidence(this.evidenceGraph, this.ledger);
+            console.log(`[Orchestrator] Loaded world-model.json from ${outputDir} (${this.targetModel.stats().total_entities} entities, ${this.evidenceGraph.stats().total_events} events)`);
         }
 
         // Check if agent exists
