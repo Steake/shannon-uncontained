@@ -90,7 +90,7 @@ export function createLSGv2(options = {}) {
     _registerSynthesisAgents(orchestrator);
     _registerExploitationAgents(orchestrator); // NEW: Exploitation phase
 
-    return orchestrator;
+    return { orchestrator };
 }
 
 /**
