@@ -15,9 +15,8 @@ import { fs, path, which } from 'zx';
 import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import 'dotenv/config'; // Ensure env vars are loaded even if run directly
-import cliProgress from 'cli-progress';
 
-// Silence zx globally to prevent newline spam in CLI
+// Silence zx globally to prevent command output spam
 $.quiet = true;
 $.verbose = false;
 
@@ -76,76 +75,33 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
         streamDeltas: true,
     });
 
-    // MultiBar Setup - configured to suppress excessive newlines
-    const multibar = new cliProgress.MultiBar({
-        clearOnComplete: false,
-        hideCursor: true,
-        format: '{bar} | {agent} | {status}',
-        barCompleteChar: '\u2588',
-        barIncompleteChar: '\u2591',
-        linewrap: false,
-        noTTYOutput: false,
-        emptyOnZero: true,
-        forceRedraw: false,
-        stopOnComplete: true,
-    }, cliProgress.Presets.shades_grey);
-
-
-    // Track active bars
-    const agentBars = new Map();
+    // Simple progress - no multibar (avoids terminal newline issues)
     const completedAgents = new Set();
-
-    // Set up event listeners
 
     // Stage Start
     orchestrator.on('stage:start', ({ stage }) => {
         if (!options.quiet) console.log(chalk.bold.blue(`\n⚡ Stage: ${stage.toUpperCase()}`));
     });
 
-    // Agent Start: Add a bar
+    // Agent Start
     orchestrator.on('agent:start', ({ agent }) => {
-        if (options.quiet) return;
-        const b = multibar.create(100, 0, {
-            agent: chalk.cyan(agent.padEnd(20)),
-            status: 'Starting...'
-        });
-        agentBars.set(agent, b);
-    });
-
-    // Agent Status Update
-    orchestrator.on('agent:status', ({ agent, status }) => {
-        const b = agentBars.get(agent);
-        if (b) {
-            // clean status string
-            let cleanStatus = status.length > 50 ? status.substring(0, 47) + '...' : status;
-            b.update(50, { agent: chalk.cyan(agent.padEnd(20)), status: cleanStatus }); // Arbitrary 50% for "running"
+        if (options.verbose && !options.quiet) {
+            console.log(chalk.gray(`  ▶ ${agent}`));
         }
     });
 
     // Agent Complete
     orchestrator.on('agent:complete', ({ agent, result }) => {
-        const b = agentBars.get(agent);
-        if (b) {
-            const statusMsg = result.success ? 'Success' : (result.error || 'Failed');
-
-            b.update(100, {
-                agent: chalk.cyan(agent.padEnd(20)),
-                status: result.success ? chalk.green('Success') : chalk.red(statusMsg)
-            });
-            b.stop();
-            agentBars.delete(agent);
-
-            // If verbose, print detail below (might break layout if not careful, but multibar handles it mostly)
-            if (options.verbose && !result.success) {
-                multibar.log(chalk.red(`  -> ${agent} Error: ${result.error}\n`));
-            }
+        if (!options.quiet) {
+            const icon = result.success ? chalk.green('✓') : chalk.red('✗');
+            const status = result.success ? '' : ` - ${result.error || 'Failed'}`;
+            console.log(`  ${icon} ${agent}${status}`);
         }
         completedAgents.add(agent);
     });
 
     orchestrator.on('stage:complete', ({ stage, errors }) => {
-        // Cleanup any stuck bars for this stage
-        // (Orchestrator usually finishes agents before emitting stage:complete)
+        // Stage complete - no action needed
     });
 
     // Run full pipeline
@@ -158,10 +114,7 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
             autoStart: true
         };
 
-        // If quiet, don't use bars
-        if (options.quiet) {
-            multibar.stop();
-        }
+        // Quiet mode handled in event listeners
 
         const result = await orchestrator.runFullPipeline(webUrl, sourceDir, {
             framework: options.framework || 'express',
@@ -170,7 +123,7 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
             quiet: !options.verbose // Silence agents unless verbose
         });
 
-        multibar.stop();
+
 
         // Print summary
         console.log(chalk.green('\n✅ Pipeline Complete'));
@@ -198,7 +151,7 @@ export async function generateLocalSource(webUrl, outputDir, options = {}) {
 
         return sourceDir;
     } catch (error) {
-        multibar.stop();
+
         console.error(chalk.red(`\n❌ Pipeline failed: ${error.message}`));
         if (options.verbose) {
             console.error(error.stack);

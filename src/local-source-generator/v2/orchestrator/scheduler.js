@@ -124,7 +124,7 @@ export class Orchestrator extends EventEmitter {
                 const { createGitCheckpoint } = await import('../../../utils/git-manager.js');
                 await createGitCheckpoint(inputs.outputDir, `Before ${agentName}`, 1);
             } catch (e) {
-                console.warn(`[Orchestrator] Failed to create start checkpoint: ${e.message}`);
+                // Silently continue - git checkpointing is optional
             }
         }
 
@@ -153,7 +153,7 @@ export class Orchestrator extends EventEmitter {
                     await rollbackGitWorkspace(inputs.outputDir, `${agentName} failure`);
                 }
             } catch (e) {
-                console.warn(`[Orchestrator] Git state management failed: ${e.message}`);
+                // Silently continue - git state management is optional
             }
         }
 
@@ -313,22 +313,32 @@ export class Orchestrator extends EventEmitter {
      */
     static defineLSGPipeline() {
         return [
-            // Phase 1: Reconnaissance
-            new PipelineStage('recon', [
-                'OpenAPIDiscoveryAgent', // Auto-detect API specs
-                'SitemapAgent',          // Sitemap/robots.txt mining
-                'NetReconAgent',
-                'SubdomainHunterAgent',
-                'TechFingerprinterAgent',
-                'CrawlerAgent',
-                'JSHarvesterAgent',
-                'APIDiscovererAgent',
-                'ContentDiscoveryAgent',
-                'SecretScannerAgent',
-                'WAFDetector',
-                'CORSProbeAgent',        // CORS method discovery
-                'BrowserCrawlerAgent',   // Stealth browser crawl
-                'MetasploitRecon',
+            // Phase 1: Reconnaissance (Split into dependencies)
+
+            // 1. Discovery - Find the scope
+            new PipelineStage('recon:discovery', [
+                'SubdomainHunterAgent',  // Finds subdomains (Primary Seed)
+                'SitemapAgent',          // Finds paths
+                'OpenAPIDiscoveryAgent', // Finds API specs
+            ], { parallel: true, required: false }),
+
+            // 2. Enumeration - Explore the scope
+            new PipelineStage('recon:enumeration', [
+                'NetReconAgent',         // Scans found subdomains
+                'WAFDetector',           // Checks protections
+                'TechFingerprinterAgent',// Identifies stack
+                'CrawlerAgent',          // Standard crawl
+                'BrowserCrawlerAgent',   // Deep dynamic crawl
+            ], { parallel: true, required: false }),
+
+            // 3. Analysis - unexpected intelligence from content
+            new PipelineStage('recon:analysis', [
+                'JSHarvesterAgent',      // Needs files from crawler
+                'APIDiscovererAgent',    // Needs traffic/links from crawler
+                'ContentDiscoveryAgent', // Targeted fuzzing
+                'CORSProbeAgent',        // Needs endpoints
+                'SecretScannerAgent',    // Scans all bodies
+                'MetasploitRecon',       // Scans services
             ], { parallel: true, required: false }),
 
             // Phase 2: Analysis  
