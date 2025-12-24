@@ -279,7 +279,10 @@ export class Cortex {
     predictArchitecture(evidence) {
         const predictions = [];
 
-        // Rule-based prediction
+        // Convert endpoints array to features if needed
+        const features = this._extractArchFeatures(evidence);
+
+        // Rule-based prediction (works with either format)
         const rulePred = this.ruleModel.predictArchitecture(evidence);
         if (rulePred && rulePred.tags && rulePred.tags.length > 0) {
             predictions.push({
@@ -289,9 +292,9 @@ export class Cortex {
             });
         }
 
-        // ML-based prediction
-        if (this.archNetModel) {
-            const mlPred = this.archNetModel.predictArchitecture(evidence);
+        // ML-based prediction (needs features format)
+        if (this.archNetModel && features) {
+            const mlPred = this.archNetModel.predictArchitecture(features);
             if (mlPred && mlPred.tags && mlPred.tags.length > 0) {
                 predictions.push({
                     modelId: 'archnet_bayes_v1',
@@ -324,10 +327,51 @@ export class Cortex {
     }
 
     /**
+     * Extract features from endpoints array or evidence object
+     */
+    _extractArchFeatures(evidence) {
+        if (!evidence) return null;
+
+        // Already a features object
+        if (evidence.headers || evidence.cookies) {
+            return evidence;
+        }
+
+        // Convert endpoints array to features
+        if (Array.isArray(evidence) && evidence.length > 0) {
+            const features = {
+                url: evidence[0]?.attributes?.path || 'unknown',
+                headers: {},
+                cookies: [],
+                html_tags: [],
+            };
+
+            // Extract patterns from paths
+            for (const ep of evidence) {
+                const path = ep.attributes?.path || '';
+
+                // Detect common frameworks from paths
+                if (path.includes('/_next/')) {
+                    features.headers['x-framework'] = 'nextjs';
+                }
+                if (path.includes('/wp-')) {
+                    features.headers['x-framework'] = 'wordpress';
+                }
+                if (path.includes('/graphql')) {
+                    features.headers['x-api-type'] = 'graphql';
+                }
+            }
+
+            return features;
+        }
+
+        return null;
+    }
+
+    /**
      * Get model registry for external access
      */
     getModelRegistry() {
         return modelRegistry;
     }
 }
-

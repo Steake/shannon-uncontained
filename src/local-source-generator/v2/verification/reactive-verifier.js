@@ -63,27 +63,35 @@ export class ReactiveVerifier {
     }
 
     /**
-     * Check if a claim should be verified based on confidence
+     * Check if a claim should be verified
+     * Verifies claims that:
+     * 1. Have high uncertainty (need probing to reduce u)
+     * 2. OR have moderate confidence but not yet verified
+     * 3. AND are verifiable via HTTP probe
      */
     shouldVerify(claim) {
         if (!claim) return false;
-        const opinion = claim.getOpinion ? claim.getOpinion() : null;
-        if (!opinion) return false;
+
+        // Already verified
+        if (claim.verified !== undefined && claim.verified !== null) return false;
+
+        // Check if claim type is verifiable via HTTP probe
+        const verifiableTypes = ['endpoint', 'waf', 'missing_security_header', 'framework'];
+        const isVerifiable = verifiableTypes.some(t =>
+            claim.claim_type?.includes(t) ||
+            claim.subject?.startsWith('http')
+        );
+
+        if (!isVerifiable) return false;
+
+        // Check opinion
+        const opinion = claim.getOpinion ? claim.getOpinion() : claim.opinion;
+        if (!opinion) return true; // No opinion yet, should verify
 
         // Verify if:
-        // 1. Not yet verified
-        // 2. Uncertainty is below threshold (i.e., we're somewhat confident)
-        // 3. Claim type is verifiable via HTTP probe
-        const verifiableTypes = ['endpoint', 'classification', 'framework'];
-        const isVerifiable = verifiableTypes.some(t =>
-            claim.claim_type?.includes(t) || claim.subject?.includes(t)
-        );
-
-        return (
-            (claim.verified === null || claim.verified === undefined) &&
-            opinion.u < (1 - this.config.minConfidenceToVerify) &&
-            isVerifiable
-        );
+        // - High uncertainty (u > 0.5) - need to reduce uncertainty
+        // - OR high belief but not yet probed
+        return opinion.u > 0.5 || (opinion.b > 0.5 && !claim.evidence_vector?.active_probe_success);
     }
 
     /**

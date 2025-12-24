@@ -4,6 +4,7 @@ import { path, fs } from 'zx';
 import { displaySplashScreen } from '../ui.js';
 import { createLSGv2 } from '../../local-source-generator/v2/index.js';
 import { checkToolAvailability, handleMissingTools } from '../../tool-checker.js';
+import { DomainProfiler } from '../../local-source-generator/v2/adaptation/domain-profiler.js';
 
 export async function runCommand(target, options) {
     // 1. Display Info
@@ -88,6 +89,30 @@ export async function runCommand(target, options) {
             console.log(chalk.green.bold('\n🎉 Pipeline Completed Successfully!'));
             console.log(chalk.gray(`    World Model: ${path.join(workspace, 'world-model.json')}`));
             console.log(chalk.gray(`    Execution Log: ${path.join(workspace, 'execution-log.json')}`));
+
+            // Update domain profile for drift detection
+            try {
+                const profiler = new DomainProfiler({ profileDir: path.join(workspace, 'domain-profiles') });
+                await profiler.init();
+
+                const domain = new URL(target).hostname;
+                const metrics = {
+                    probeSuccessRate: result.stats?.probeSuccessRate || 0,
+                    avgClaimConfidence: orchestrator.ledger.stats().avg_belief || 0.5,
+                    endpointCount: orchestrator.targetModel.getEndpoints().length,
+                    techDistribution: {},
+                };
+
+                const profile = await profiler.updateProfile(domain, metrics);
+
+                if (profiler.hasDrifted(domain)) {
+                    console.log(chalk.yellow(`    ⚠️ Domain drift detected: ${(profile.drift_score * 100).toFixed(1)}%`));
+                } else {
+                    console.log(chalk.gray(`    📊 Domain profile updated (drift: ${(profile.drift_score * 100).toFixed(1)}%)`));
+                }
+            } catch (profileErr) {
+                // Domain profiling is optional, continue on error
+            }
         } else {
             console.log(chalk.red.bold('\n❌ Pipeline Failed'));
             process.exit(1);
