@@ -18,6 +18,7 @@ import { EpistemicLedger } from '../epistemics/ledger.js';
 import { AgentContext, AgentRegistry } from '../agents/base-agent.js';
 import { PipelineHealthMonitor } from './health-monitor.js';
 import { ReactiveVerifier } from '../verification/reactive-verifier.js';
+import { MetaCognition, HINT_TYPES, SEVERITY } from '../metacognition/meta-cognition.js';
 
 /**
  * Execution modes
@@ -76,6 +77,12 @@ export class Orchestrator extends EventEmitter {
             ledger: this.ledger,
             concurrency: 3,
             minConfidence: 0.6,
+        });
+
+        // Initialize Meta-Cognition for uncertainty/contradiction detection
+        this.metaCognition = new MetaCognition({
+            worldModel: null, // Will be set when WorldModel is available
+            ledger: this.ledger,
         });
 
         // Execution state
