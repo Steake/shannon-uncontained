@@ -52,11 +52,21 @@ export class ArchitectInferAgent extends BaseAgent {
         };
 
         this.llm = getLLMClient();
-
         this.cortex = new Cortex();
+        // Lazy load feature collector to avoid circular deps if possible, or just import
+        // Assuming FeatureCollector is available via ../../ml/feature-collector.js
+    }
+
+    async init() {
+        const { FeatureCollector } = await import('../../ml/feature-collector.js');
+        this.featureCollector = new FeatureCollector(this.options.outputDir || process.cwd());
+        await this.featureCollector.init();
+        await this.cortex.init();
     }
 
     async run(ctx, inputs) {
+        if (!this.featureCollector) await this.init();
+
         const { target } = inputs;
 
         // Gather evidence from EvidenceGraph
@@ -77,6 +87,27 @@ export class ArchitectInferAgent extends BaseAgent {
         // 1. Deterministic Inference via Cortex
         const { tags } = this.cortex.predictArchitecture(endpoints);
         const framework = tags.length > 0 ? tags[0].label : null;
+
+        // Log data for ArchNet training
+        // We aggregate features from endpoints/evidence
+        if (this.featureCollector) {
+            try {
+                // Flatten evidence for logging
+                // In a real crawl, we'd log each endpoint or a summary
+                const sampleFeatures = {
+                    url: target,
+                    headers: {}, // TODO: Extract from headers evidence if available
+                    htmlTags: [], // TODO: Extract from DOM evidence
+                    cookies: [],
+                    inferredFramework: framework || 'unknown'
+                };
+                // Populate from tech events if possible
+                // ...
+                this.featureCollector.logArchData(sampleFeatures);
+            } catch (e) {
+                // Ignore logging errors
+            }
+        }
 
         // Legacy support helper (to be moved to Cortex eventually)
         const inferredComponents = this.inferComponents(framework, endpoints);

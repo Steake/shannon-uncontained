@@ -22,6 +22,7 @@ export class AgentContext extends EventEmitter {
     targetModel,
     ledger,
     manifest,
+    verifier = null,  // ReactiveVerifier for closed-loop verification
     config = {},
     budget = {},
   }) {
@@ -30,6 +31,7 @@ export class AgentContext extends EventEmitter {
     this.targetModel = targetModel;
     this.ledger = ledger;
     this.manifest = manifest;
+    this.verifier = verifier;
     this.config = config;
     this.budget = {
       max_time_ms: budget.max_time_ms || 60000,
@@ -128,6 +130,12 @@ export class AgentContext extends EventEmitter {
   emitClaim(claimData) {
     const claim = this.ledger.upsertClaim(claimData);
     this.emittedClaims.push(claim.id);
+
+    // Auto-enqueue for reactive verification if verifier available
+    if (this.verifier && this.verifier.shouldVerify(claim)) {
+      this.verifier.enqueue(claim);
+    }
+
     return claim;
   }
 

@@ -17,6 +17,7 @@ import { ArtifactManifest } from '../worldmodel/artifact-manifest.js';
 import { EpistemicLedger } from '../epistemics/ledger.js';
 import { AgentContext, AgentRegistry } from '../agents/base-agent.js';
 import { PipelineHealthMonitor } from './health-monitor.js';
+import { ReactiveVerifier } from '../verification/reactive-verifier.js';
 
 /**
  * Execution modes
@@ -69,6 +70,14 @@ export class Orchestrator extends EventEmitter {
             maxConcurrency: options.parallel || 5,
             windowSizeMs: 60000
         });
+
+        // Initialize Reactive Verifier for closed-loop verification
+        this.verifier = new ReactiveVerifier({
+            ledger: this.ledger,
+            concurrency: 3,
+            minConfidence: 0.6,
+        });
+
         // Execution state
         this.cache = new Map(); // idempotencyKey -> result
         this.executionLog = [];
@@ -95,6 +104,7 @@ export class Orchestrator extends EventEmitter {
             targetModel: this.targetModel,
             ledger: this.ledger,
             manifest: this.manifest,
+            verifier: this.verifier,  // Enable closed-loop verification
             config: this.options,
             budget,
         });
@@ -163,12 +173,13 @@ export class Orchestrator extends EventEmitter {
         // Handle success/failure with git callbacks
         if (inputs.outputDir) {
             try {
-                const { commitGitSuccess, rollbackGitWorkspace } = await import('../../../utils/git-manager.js');
-                if (result.success) {
-                    await commitGitSuccess(inputs.outputDir, agentName);
-                } else {
-                    await rollbackGitWorkspace(inputs.outputDir, `${agentName} failure`);
-                }
+                // Disable git automation to prevent spam
+                // const { commitGitSuccess, rollbackGitWorkspace } = await import('../../../utils/git-manager.js');
+                // if (result.success) {
+                //     await commitGitSuccess(inputs.outputDir, agentName);
+                // } else {
+                //     await rollbackGitWorkspace(inputs.outputDir, `${agentName} failure`);
+                // }
             } catch (e) {
                 // Silently continue - git state management is optional
             }
