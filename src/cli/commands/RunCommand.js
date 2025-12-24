@@ -113,6 +113,9 @@ export async function runCommand(target, options) {
             } catch (profileErr) {
                 // Domain profiling is optional, continue on error
             }
+
+            // Exit cleanly (prevents hanging from open handles like ReactiveVerifier queue)
+            process.exit(0);
         } else {
             console.log(chalk.red.bold('\n❌ Pipeline Failed'));
             process.exit(1);
