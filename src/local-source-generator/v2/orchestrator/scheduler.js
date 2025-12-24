@@ -569,19 +569,22 @@ export class Orchestrator extends EventEmitter {
         const worldModelPath = path.join(outputDir, 'world-model.json');
         if (await fs.pathExists(worldModelPath)) {
             const data = await fs.readJSON(worldModelPath);
-            this.targetModel.import(data);
-            if (data.evidence_graph) {
-                this.evidenceGraph.import(data.evidence_graph);
-            }
+
+            // Import model components
+            this.targetModel.import(data.target_model || data);
+            if (data.evidence_graph) this.evidenceGraph.import(data.evidence_graph);
+            if (data.ledger) this.ledger.import(data.ledger);
+            if (data.manifest) this.manifest.import(data.manifest);
+
             // Re-derive entities from evidence (ensures endpoints are populated)
             this.targetModel.deriveFromEvidence(this.evidenceGraph, this.ledger);
-            console.log(`[Orchestrator] Loaded world-model.json from ${outputDir} (${this.targetModel.stats().total_entities} entities, ${this.evidenceGraph.stats().total_events} events)`);
+
+            console.log(`[Orchestrator] Loaded world-model.json from ${outputDir} (${this.targetModel.getEndpoints().length} endpoints, ${this.evidenceGraph.stats().total_events} events)`);
         }
 
         // Check if agent exists
         const agent = this.registry.get(agentName);
         if (!agent) {
-            // List available agents for help
             const available = this.registry.list().join(', ');
             return {
                 success: false,
@@ -597,10 +600,9 @@ export class Orchestrator extends EventEmitter {
 
         // Save updated world model
         if (result.success) {
-            const exported = this.targetModel.export();
-            exported.evidence_graph = this.evidenceGraph.export();
+            const exported = this.exportState();
             await fs.writeJSON(worldModelPath, exported, { spaces: 2 });
-            console.log(`[Orchestrator] World model saved to ${worldModelPath}`);
+            console.log(`[Orchestrator] World model saved to ${worldModelPath} (${this.targetModel.getEndpoints().length} endpoints)`);
         }
 
         return result;

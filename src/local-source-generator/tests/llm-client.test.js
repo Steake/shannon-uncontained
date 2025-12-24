@@ -172,4 +172,40 @@ describe('LLMClient', () => {
             assert.equal(config.hasApiKey, true);
         });
     });
+
+    describe('callOpenAI headers', () => {
+        test('should include OpenRouter-specific headers when baseUrl is openrouter.ai', async () => {
+            process.env.LLM_PROVIDER = 'openrouter';
+            process.env.OPENROUTER_API_KEY = 'sk-or-test';
+
+            const { LLMClient } = await import('../v2/orchestrator/llm-client.js');
+            const client = new LLMClient();
+
+            // Mock global fetch
+            const originalFetch = global.fetch;
+            const mockFetch = mock.fn(async (url, options) => {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        choices: [{ message: { content: 'LLM Response' } }],
+                        usage: { total_tokens: 10 }
+                    })
+                };
+            });
+            global.fetch = mockFetch;
+
+            try {
+                await client.callOpenAI('Test prompt', { model: 'test-model' });
+
+                const lastCall = mockFetch.mock.calls[0];
+                const headers = lastCall.arguments[1].headers;
+
+                assert.equal(headers['Authorization'], 'Bearer sk-or-test');
+                assert.equal(headers['HTTP-Referer'], 'https://github.com/shannon-security');
+                assert.equal(headers['X-Title'], 'Shannon Security Scanner');
+            } finally {
+                global.fetch = originalFetch;
+            }
+        });
+    });
 });

@@ -136,11 +136,74 @@ describe('Orchestrator', () => {
             assert.ok(result.error.includes('Available:'));
         });
 
-        // Skip file-dependent tests - they require actual workspace
-        test.skip('should run registered agent successfully', async () => {
+        test('should run registered agent successfully', async () => {
+            const agent = new MockAgent('TestAgent');
+            orchestrator.registerAgent(agent);
+
+            const tempDir = `./test-workspace-${Date.now()}`;
+            const { mkdir, rm, writeFile } = await import('node:fs/promises');
+
+            await mkdir(tempDir, { recursive: true });
+
+            try {
+                // Ensure world-model.json exists so load doesn't crash if it tries to read it
+                await writeFile(`${tempDir}/world-model.json`, JSON.stringify({
+                    entities: [],
+                    evidence_graph: { events: [] }
+                }));
+
+                const result = await orchestrator.runSingleAgent(
+                    'TestAgent',
+                    'https://example.com',
+                    tempDir
+                );
+
+                assert.equal(result.success, true);
+                assert.equal(agent.runCalled, true);
+            } finally {
+                await rm(tempDir, { recursive: true, force: true });
+            }
         });
 
-        test.skip('should emit agent:start and agent:complete events', async () => {
+        test('should emit agent:start and agent:complete events', async () => {
+            const agent = new MockAgent('TestAgent');
+            orchestrator.registerAgent(agent);
+
+            const tempDir = `./test-workspace-events-${Date.now()}`;
+            const { mkdir, rm, writeFile } = await import('node:fs/promises');
+            await mkdir(tempDir, { recursive: true });
+
+            try {
+                await writeFile(`${tempDir}/world-model.json`, JSON.stringify({
+                    entities: [],
+                    evidence_graph: { events: [] }
+                }));
+
+                let startEmitted = false;
+                let completeEmitted = false;
+
+                orchestrator.on('agent:start', ({ agent: name }) => {
+                    startEmitted = true;
+                    assert.equal(name, 'TestAgent');
+                });
+
+                orchestrator.on('agent:complete', ({ agent: name, result }) => {
+                    completeEmitted = true;
+                    assert.equal(name, 'TestAgent');
+                    assert.equal(result.success, true);
+                });
+
+                await orchestrator.runSingleAgent(
+                    'TestAgent',
+                    'https://example.com',
+                    tempDir
+                );
+
+                assert.equal(startEmitted, true);
+                assert.equal(completeEmitted, true);
+            } finally {
+                await rm(tempDir, { recursive: true, force: true });
+            }
         });
     });
 

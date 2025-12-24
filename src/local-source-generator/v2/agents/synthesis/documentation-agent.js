@@ -218,10 +218,7 @@ ${Object.entries(byMethod).map(([m, eps]) => `| ${m} | ${eps.length} |`).join('\
         // Check if we have enough structured data
         const hasStructuredData = components.length > 0 || authFlows.length > 0 || workflows.length > 0;
 
-        // Debug: log the conditions for LLM usage
-        console.log(`[DocumentationAgent] LLM conditions: hasStructuredData=${hasStructuredData}, endpoints=${endpoints.length}, llmAvailable=${this.llm?.isAvailable()}`);
-
-        // If sparse, use LLM to infer architecture
+        // If sparse, use LLM to infer architecture from endpoints and claims
         if (!hasStructuredData && endpoints.length > 0 && this.llm?.isAvailable()) {
             try {
                 const archDoc = await this.generateArchWithLLM(ctx, target, endpoints, claims);

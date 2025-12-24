@@ -40,17 +40,12 @@ export class LLMClient {
         // API key - select based on provider for correct matching
         let apiKey = process.env.LLM_API_KEY;
         if (!apiKey) {
-            if (provider === 'openrouter') {
-                apiKey = process.env.OPENROUTER_API_KEY;
-            } else if (provider === 'anthropic') {
-                apiKey = process.env.ANTHROPIC_API_KEY;
-            } else {
-                apiKey = process.env.OPENAI_API_KEY;
-            }
-        }
-        // Fallback chain if provider-specific key not found
-        if (!apiKey) {
-            apiKey = process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY;
+            const providerKeys = {
+                openrouter: process.env.OPENROUTER_API_KEY,
+                anthropic: process.env.ANTHROPIC_API_KEY,
+                openai: process.env.OPENAI_API_KEY
+            };
+            apiKey = providerKeys[provider] || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY;
         }
 
         // Base URL - auto-detect for OpenRouter
