@@ -225,9 +225,12 @@ ${Object.entries(byMethod).map(([m, eps]) => `| ${m} | ${eps.length} |`).join('\
                 if (archDoc) {
                     ctx.recordTokens(archDoc.tokens_used || 0);
                     return archDoc.content;
+                } else {
+                    console.warn('[DocumentationAgent] LLM returned null for architecture generation');
                 }
             } catch (e) {
                 // Fall back to template if LLM fails
+                console.warn('[DocumentationAgent] LLM architecture generation failed:', e.message);
             }
         }
 
@@ -336,6 +339,8 @@ ${response.content}
             };
         }
 
+        // Log failure reason
+        console.warn('[DocumentationAgent] LLM API call failed:', response.error || 'unknown error');
         return null;
     }
 
