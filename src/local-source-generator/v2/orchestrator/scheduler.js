@@ -16,6 +16,7 @@ import { TargetModel } from '../worldmodel/target-model.js';
 import { ArtifactManifest } from '../worldmodel/artifact-manifest.js';
 import { EpistemicLedger } from '../epistemics/ledger.js';
 import { AgentContext, AgentRegistry } from '../agents/base-agent.js';
+import { PipelineHealthMonitor } from './health-monitor.js';
 
 /**
  * Execution modes
@@ -63,6 +64,11 @@ export class Orchestrator extends EventEmitter {
         // Agent registry
         this.registry = new AgentRegistry();
 
+        // Initialize Health Monitor
+        this.healthMonitor = new PipelineHealthMonitor({
+            maxConcurrency: options.parallel || 5,
+            windowSizeMs: 60000
+        });
         // Execution state
         this.cache = new Map(); // idempotencyKey -> result
         this.executionLog = [];
@@ -122,7 +128,8 @@ export class Orchestrator extends EventEmitter {
         if (inputs.outputDir) {
             try {
                 const { createGitCheckpoint } = await import('../../../utils/git-manager.js');
-                await createGitCheckpoint(inputs.outputDir, `Before ${agentName}`, 1);
+                // Disable granular checkpoints to prevent git spam (1700+ commits)
+                // await createGitCheckpoint(inputs.outputDir, `Before ${agentName}`, 1);
             } catch (e) {
                 // Silently continue - git checkpointing is optional
             }
@@ -131,6 +138,7 @@ export class Orchestrator extends EventEmitter {
         // Create context and execute
         const ctx = this.createContext(options.budget || agent.default_budget);
 
+        const startTime = Date.now();
         let result;
         try {
             // Broker status updates
@@ -142,6 +150,15 @@ export class Orchestrator extends EventEmitter {
         } catch (execError) {
             result = { success: false, error: execError.message };
         }
+
+        // Record metrics
+        const duration = Date.now() - startTime;
+        this.healthMonitor.record({
+            success: result.success,
+            duration,
+            status: result.status || (result.success ? 200 : 500),
+            isBlock: result.error?.includes('403') || result.error?.includes('429')
+        });
 
         // Handle success/failure with git callbacks
         if (inputs.outputDir) {
@@ -225,20 +242,44 @@ export class Orchestrator extends EventEmitter {
         });
 
         if (stage.parallel) {
-            // Execute agents in parallel
-            const promises = agentsToRun.map(async (agentName) => {
-                try {
-                    const result = await this.executeAgent(agentName, inputs);
-                    results[agentName] = result;
-                    if (!result.success) {
-                        errors.push({ agent: agentName, error: result.error });
-                    }
-                } catch (err) {
-                    errors.push({ agent: agentName, error: err.message });
-                }
-            });
+            // ADAPTIVE PARALLEL EXECUTION
+            const queue = [...agentsToRun];
+            const active = new Set();
 
-            await Promise.all(promises);
+            while (queue.length > 0 || active.size > 0) {
+                if (this.aborted) break;
+
+                // 1. Check Health & Adjust Concurrency
+                const limit = this.healthMonitor.adjustConcurrency();
+
+                // 2. Fill slots if healthy and available
+                while (active.size < limit && queue.length > 0) {
+                    const agentName = queue.shift();
+                    const promise = this.executeAgent(agentName, inputs)
+                        .then(result => {
+                            results[agentName] = result;
+                            if (!result.success) {
+                                errors.push({ agent: agentName, error: result.error });
+                            }
+                        })
+                        .catch(err => {
+                            errors.push({ agent: agentName, error: err.message });
+                        })
+                        .finally(() => {
+                            active.delete(promise);
+                        });
+
+                    active.add(promise);
+                }
+
+                // 3. Wait for a slot to free up or health to improve
+                if (active.size > 0) {
+                    await Promise.race([...active, new Promise(r => setTimeout(r, 200))]);
+                } else if (queue.length > 0) {
+                    // Should technically not happen if limit >= 1, but safeguard
+                    await new Promise(r => setTimeout(r, 100));
+                }
+            }
         } else {
             // Execute agents sequentially
             for (const agentName of agentsToRun) {

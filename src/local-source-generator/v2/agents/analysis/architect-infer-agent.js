@@ -9,6 +9,7 @@ import { BaseAgent } from '../base-agent.js';
 import { getLLMClient, LLM_CAPABILITIES } from '../../orchestrator/llm-client.js';
 import { CLAIM_TYPES } from '../../epistemics/ledger.js';
 import { ENTITY_TYPES, RELATIONSHIP_TYPES } from '../../worldmodel/target-model.js';
+import { Cortex } from '../../ml/cortex.js';
 
 export class ArchitectInferAgent extends BaseAgent {
     constructor(options = {}) {
@@ -52,18 +53,7 @@ export class ArchitectInferAgent extends BaseAgent {
 
         this.llm = getLLMClient();
 
-        // Abstract Framework Fingerprints (Regex -> Framework)
-        this.frameworkSignatures = {
-            'Next.js': [/\/_next\//, /\/_vercel\//],
-            'Nuxt.js': [/\/_nuxt\//],
-            'WordPress': [/\/wp-content\//, /\/wp-includes\//, /\/wp-json\//],
-            'Rails': [/\/assets\/application-[0-9a-f]{64}\.css/, /\/rails\/active_storage/],
-            'Laravel': [/\/storage\/logs\//, /\/vendor\/laravel\//],
-            'React': [/\/static\/js\/main\./, /\/static\/css\/main\./],
-            'Angular': [/inline\.[0-9a-f]+\.bundle\.js/, /main\.[0-9a-f]+\.bundle\.js/],
-            'Vue': [/app\.[0-9a-f]+\.js/, /chunk-vendors\.[0-9a-f]+\.js/],
-            'GraphQL': [/\/.+graphql/, /query=/, /mutation=/], // Generic protocol
-        };
+        this.cortex = new Cortex();
     }
 
     async run(ctx, inputs) {
@@ -81,8 +71,15 @@ export class ArchitectInferAgent extends BaseAgent {
             inferences: [],
         };
 
-        // 1. Deterministic Inference via Fingerprinting
-        const { framework, inferredComponents } = this.inferDeterministically(endpoints);
+        // Initialize Cortex
+        await this.cortex.init();
+
+        // 1. Deterministic Inference via Cortex
+        const { tags } = this.cortex.predictArchitecture(endpoints);
+        const framework = tags.length > 0 ? tags[0].label : null;
+
+        // Legacy support helper (to be moved to Cortex eventually)
+        const inferredComponents = this.inferComponents(framework, endpoints);
 
         // Build context for LLM
         const endpointSummary = endpoints.map(e => ({
@@ -187,18 +184,13 @@ export class ArchitectInferAgent extends BaseAgent {
     /**
      * Deterministically infer framework and components from route patterns
      */
-    inferDeterministically(endpoints) {
-        let framework = 'unknown';
+    /**
+     * Logic for inferring components from a detected framework
+     * TODO: Move this logic to Cortex
+     */
+    inferComponents(framework, endpoints) {
         const inferredComponents = [];
         const paths = endpoints.map(e => e.attributes.path);
-
-        // check signatures
-        for (const [fw, regexes] of Object.entries(this.frameworkSignatures)) {
-            if (paths.some(p => regexes.some(r => r.test(p)))) {
-                framework = fw;
-                break; // First match wins (priority based on object order is loose but okay here)
-            }
-        }
 
         // Framework-specific component inference
         if (framework === 'Next.js') {
@@ -218,7 +210,7 @@ export class ArchitectInferAgent extends BaseAgent {
             });
         }
 
-        return { framework, inferredComponents };
+        return inferredComponents;
     }
 
     buildPrompt(target, endpoints, technologies, jsEndpoints, framework, inferredComponents) {

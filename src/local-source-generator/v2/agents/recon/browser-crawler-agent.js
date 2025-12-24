@@ -7,6 +7,9 @@
 
 import { BaseAgent } from '../base-agent.js';
 import { EVENT_TYPES, createEvidenceEvent } from '../../worldmodel/evidence-graph.js';
+import { FeatureCollector } from '../../ml/feature-collector.js';
+import { Cortex } from '../../ml/cortex.js';
+import { path } from 'zx';
 
 export class BrowserCrawlerAgent extends BaseAgent {
     constructor(options = {}) {
@@ -56,6 +59,15 @@ export class BrowserCrawlerAgent extends BaseAgent {
             xhr_requests: [],
             errors: [],
         };
+
+        // Initialize Feature Collector
+        const outputDir = inputs.outputDir || ctx.config?.outputDir || process.cwd();
+        const featureCollector = new FeatureCollector(outputDir);
+        await featureCollector.init();
+
+        // Initialize Cortex
+        const cortex = new Cortex();
+        await cortex.init();
 
         // Check if Playwright is available
         let playwright;
@@ -117,13 +129,9 @@ export class BrowserCrawlerAgent extends BaseAgent {
                         const path = parsed.pathname + parsed.search;
                         const key = `${method}:${path}`;
 
-                        // NOISE FILTERING
-                        const isNoise = [
-                            /\/cdn-cgi\//, /\/_next\/static\//, /\/_vercel\//,
-                            /\.(png|jpg|jpeg|gif|svg|ico|css|woff2?|ttf|eot)$/i,
-                            /google-analytics/, /googletagmanager/, /segment\.io/,
-                            /onetrust/, /hotjar/, /doubleclick/, /facebook\.com\/tr/,
-                        ].some(pattern => pattern.test(path) || pattern.test(url));
+                        // NOISE FILTERING via Cortex
+                        const prediction = cortex.predictFilter(url, path);
+                        const isNoise = prediction.label === 'noise';
 
                         if (!isNoise && !discoveredEndpoints.has(key)) {
                             discoveredEndpoints.add(key);
@@ -168,6 +176,21 @@ export class BrowserCrawlerAgent extends BaseAgent {
                             }));
                             results.endpoints_discovered++;
                         }
+
+                        // Log to Feature Collector (Silver Labeling)
+                        featureCollector.logFilterData({
+                            url,
+                            path,
+                            method,
+                            resourceType,
+                            contentType: response.headers()['content-type'],
+                            contentLength: response.headers()['content-length'],
+                            // Labels
+                            heuristic_label: isNoise ? 'noise' : 'signal',
+                            prediction_score: prediction.score,
+                            prediction_model: prediction.model
+                        });
+
                     } catch (err) {
                         // Ignore processing errors
                     }
@@ -240,6 +263,9 @@ export class BrowserCrawlerAgent extends BaseAgent {
         } finally {
             if (browser) {
                 await browser.close();
+            }
+            if (this.featureCollector) {
+                await this.featureCollector.close();
             }
         }
 
