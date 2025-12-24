@@ -195,17 +195,27 @@ Respond ONLY with the JSON, no other text or markdown.`;
     }
 
     /**
-     * Call OpenAI-compatible API
+     * Call OpenAI-compatible API (also works for OpenRouter with extra headers)
      */
     async callOpenAI(prompt, options) {
         const baseUrl = this.options.baseUrl || 'https://api.openai.com/v1';
+        const isOpenRouter = baseUrl.includes('openrouter.ai');
+
+        // Build headers - OpenRouter requires additional headers
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.options.apiKey}`,
+        };
+
+        // OpenRouter-specific headers (required for auth)
+        if (isOpenRouter) {
+            headers['HTTP-Referer'] = 'https://github.com/shannon-security';
+            headers['X-Title'] = 'Shannon Security Scanner';
+        }
 
         const response = await this.fetchWithRetry(`${baseUrl}/chat/completions`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.options.apiKey}`,
-            },
+            headers,
             body: JSON.stringify({
                 model: options.model,
                 messages: [{ role: 'user', content: prompt }],
