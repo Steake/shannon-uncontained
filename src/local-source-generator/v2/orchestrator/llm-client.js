@@ -47,6 +47,26 @@ export class LLMClient {
     }
 
     /**
+     * Check if LLM is available (API key configured)
+     * @returns {boolean} True if API key is configured
+     */
+    isAvailable() {
+        return !!this.options.apiKey;
+    }
+
+    /**
+     * Get the configured provider and model for display
+     * @returns {object} { provider, model, hasApiKey }
+     */
+    getConfig() {
+        return {
+            provider: this.options.provider,
+            model: this.options.defaultModel,
+            hasApiKey: this.isAvailable(),
+        };
+    }
+
+    /**
      * Generate completion with structured output
      * @param {string} prompt - Prompt text
      * @param {object} options - Generation options

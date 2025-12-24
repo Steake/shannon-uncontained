@@ -5,6 +5,7 @@ import { displaySplashScreen } from '../ui.js';
 import { createLSGv2 } from '../../local-source-generator/v2/index.js';
 import { checkToolAvailability, handleMissingTools } from '../../tool-checker.js';
 import { DomainProfiler } from '../../local-source-generator/v2/adaptation/domain-profiler.js';
+import { getLLMClient } from '../../local-source-generator/v2/orchestrator/llm-client.js';
 
 export async function runCommand(target, options) {
     // 1. Display Info
@@ -18,6 +19,17 @@ export async function runCommand(target, options) {
     // 2. Setup Workspace
     const workspace = options.workspace || path.join(process.cwd(), 'workspaces', new URL(target).hostname);
     await fs.ensureDir(workspace);
+
+    // 2.5 Preflight Checks - LLM availability
+    const llm = getLLMClient();
+    const llmConfig = llm.getConfig();
+    if (!llmConfig.hasApiKey) {
+        console.log(chalk.yellow('\n⚠️  LLM API key not configured!'));
+        console.log(chalk.gray('   Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or LLM_API_KEY in .env'));
+        console.log(chalk.gray('   LLM-enhanced features (architecture docs, security analysis) will be skipped.\n'));
+    } else if (!global.SHANNON_QUIET) {
+        console.log(chalk.green(`✓ LLM configured: ${llmConfig.provider} (${llmConfig.model})`));
+    }
 
     // 3. Handle Dry Run
     if (options.mode === 'dry-run') {

@@ -219,7 +219,7 @@ ${Object.entries(byMethod).map(([m, eps]) => `| ${m} | ${eps.length} |`).join('\
         const hasStructuredData = components.length > 0 || authFlows.length > 0 || workflows.length > 0;
 
         // If sparse, use LLM to infer architecture
-        if (!hasStructuredData && endpoints.length > 0 && this.llm) {
+        if (!hasStructuredData && endpoints.length > 0 && this.llm?.isAvailable()) {
             try {
                 const archDoc = await this.generateArchWithLLM(ctx, target, endpoints, claims);
                 if (archDoc) {
