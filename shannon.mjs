@@ -39,6 +39,7 @@ program
   .option('--resume', 'Resume existing session (even if completed)')
   .option('--restore <agent>', 'Restore to specific agent checkpoint')
   .option('--config <file>', 'Path to configuration file')
+  .option('--agent <name>', 'Run only a specific agent (e.g., DocumentationAgent)')
   // Budget Options
   .option('--max-time-ms <ms>', 'Max execution time in ms', parseInt)
   .option('--max-tokens <n>', 'Max tokens allowed', parseInt)

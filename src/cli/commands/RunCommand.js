@@ -95,7 +95,29 @@ export async function runCommand(target, options) {
             }
         });
 
-        const result = await orchestrator.runFullPipeline(target, workspace, runOptions);
+        // 6. Execute Pipeline (full or single-agent)
+        let result;
+
+        if (options.agent) {
+            // Single-agent mode: run only the specified agent
+            console.log(chalk.cyan(`\n🎯 Running single agent: ${options.agent}`));
+            result = await orchestrator.runSingleAgent(options.agent, target, workspace);
+
+            if (result.success) {
+                console.log(chalk.green.bold(`\n✅ Agent ${options.agent} completed successfully!`));
+                console.log(chalk.gray(`    World Model: ${path.join(workspace, 'world-model.json')}`));
+            } else {
+                console.log(chalk.red.bold(`\n❌ Agent ${options.agent} failed`));
+                console.log(chalk.red(`    Error: ${result.error}`));
+                process.exit(1);
+            }
+
+            // Exit cleanly for single-agent mode
+            process.exit(0);
+        }
+
+        // Full pipeline mode
+        result = await orchestrator.runFullPipeline(target, workspace, runOptions);
 
         if (result.success) {
             console.log(chalk.green.bold('\n🎉 Pipeline Completed Successfully!'));

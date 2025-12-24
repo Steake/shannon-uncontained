@@ -554,6 +554,52 @@ export class Orchestrator extends EventEmitter {
     }
 
     /**
+     * Run a single agent on an existing workspace
+     * Useful for debugging and iterating on specific agents
+     * 
+     * @param {string} agentName - Name of the agent to run
+     * @param {string} target - Target URL
+     * @param {string} outputDir - Workspace directory (must exist)
+     * @returns {Promise<object>} Agent result
+     */
+    async runSingleAgent(agentName, target, outputDir) {
+        const { fs, path } = await import('zx');
+
+        // Load existing workspace
+        const worldModelPath = path.join(outputDir, 'world-model.json');
+        if (await fs.pathExists(worldModelPath)) {
+            const data = await fs.readJSON(worldModelPath);
+            this.worldModel.load(data);
+            console.log(`[Orchestrator] Loaded world-model.json from ${outputDir}`);
+        }
+
+        // Check if agent exists
+        if (!this.agents.has(agentName)) {
+            // List available agents for help
+            const available = Array.from(this.agents.keys()).join(', ');
+            return {
+                success: false,
+                error: `Agent "${agentName}" not found. Available: ${available}`,
+            };
+        }
+
+        const inputs = { target, outputDir };
+
+        this.emit('agent:start', { agent: agentName });
+        const result = await this.executeAgent(agentName, inputs);
+        this.emit('agent:complete', { agent: agentName, result });
+
+        // Save updated world model
+        if (result.success) {
+            const exported = this.worldModel.export();
+            await fs.writeJSON(worldModelPath, exported, { spaces: 2 });
+            console.log(`[Orchestrator] World model saved to ${worldModelPath}`);
+        }
+
+        return result;
+    }
+
+    /**
      * Run only synthesis stage with imported world model
      * Used when recon is done externally (e.g., by v1 pipeline)
      * 
