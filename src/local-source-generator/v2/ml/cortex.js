@@ -8,9 +8,12 @@
  * Uses a Strategy Pattern:
  * - Tries to load TF.js/JSON models from disk.
  * - Falls back to "RuleModel" (Heuristics) if no models found.
+ * - Uses Arbiter for multi-model consensus when available.
  */
 
 import { fs, path } from 'zx';
+import { modelRegistry } from './model-registry.js';
+import { arbiter } from './arbiter.js';
 
 class RuleModel {
     /**
@@ -192,26 +195,33 @@ class ArchNetBayes {
 export class Cortex {
     constructor(options = {}) {
         this.modelDir = options.modelDir || path.join(process.cwd(), 'models');
-        this.ruleModel = new RuleModel(); // Always available
-        this.activeFilterModel = this.ruleModel;
-        this.activeArchModel = this.ruleModel;
+        this.ruleModel = new RuleModel(); // Always available as fallback
+        this.bayesFilterModel = null;
+        this.archNetModel = null;
         this.ready = false;
+        this.useArbiter = options.useArbiter !== false; // Enable by default
     }
 
     async init() {
         if (this.ready) return;
 
+        // Register rule model (always available)
+        modelRegistry.register('heuristic_v1', { type: 'filter', version: '1.0' });
+        modelRegistry.register('heuristic_arch_v1', { type: 'arch', version: '1.0' });
+
         try {
             const filterModelPath = path.join(this.modelDir, 'filternet-bayes.json');
             if (await fs.pathExists(filterModelPath)) {
                 const modelData = await fs.readJson(filterModelPath);
-                this.activeFilterModel = new BayesModel(modelData);
+                this.bayesFilterModel = new BayesModel(modelData);
+                modelRegistry.register('filternet_bayes_v1', { type: 'filter', version: '1.0' });
             }
 
             const archModelPath = path.join(this.modelDir, 'archnet-bayes.json');
             if (await fs.pathExists(archModelPath)) {
                 const archData = await fs.readJson(archModelPath);
-                this.activeArchModel = new ArchNetBayes(archData);
+                this.archNetModel = new ArchNetBayes(archData);
+                modelRegistry.register('archnet_bayes_v1', { type: 'arch', version: '1.0' });
             }
         } catch (e) {
             console.warn('⚠️ Cortex: Failed to load ML models, using heuristics.', e.message);
@@ -222,20 +232,102 @@ export class Cortex {
 
     /**
      * Classify a URL as interesting or noise
+     * Uses Arbiter for multi-model consensus when available
      */
     predictFilter(url, pathStr) {
-        return this.activeFilterModel.predictFilter(url, pathStr);
+        const predictions = [];
+
+        // Collect predictions from all available filter models
+        const rulePred = this.ruleModel.predictFilter(url, pathStr);
+        predictions.push({
+            modelId: 'heuristic_v1',
+            label: rulePred.label,
+            confidence: rulePred.score,
+        });
+
+        if (this.bayesFilterModel) {
+            const bayesPred = this.bayesFilterModel.predictFilter(url, pathStr);
+            predictions.push({
+                modelId: 'filternet_bayes_v1',
+                label: bayesPred.label,
+                confidence: bayesPred.score,
+            });
+        }
+
+        // Use arbiter for consensus if enabled and multiple models
+        if (this.useArbiter && predictions.length > 1) {
+            const consensus = arbiter.arbitrate(predictions);
+            return {
+                label: consensus.label,
+                score: consensus.confidence,
+                model: 'arbiter',
+                contributing_models: consensus.contributing_models,
+                entropy: consensus.entropy,
+            };
+        }
+
+        // Single model - return directly
+        return predictions.length > 0
+            ? { label: predictions[0].label, score: predictions[0].confidence, model: predictions[0].modelId }
+            : { label: 'signal', score: 0.5, model: 'default' };
     }
 
     /**
      * Infer architecture from accumulated evidence
+     * Uses Arbiter when multiple arch models available
      */
     predictArchitecture(evidence) {
-        // Try ML model first
-        const result = this.activeArchModel.predictArchitecture(evidence);
-        if (result) return result;
+        const predictions = [];
 
-        // Fallback to rules if ML returns null (low confidence or missing features)
-        return this.ruleModel.predictArchitecture(evidence);
+        // Rule-based prediction
+        const rulePred = this.ruleModel.predictArchitecture(evidence);
+        if (rulePred && rulePred.tags && rulePred.tags.length > 0) {
+            predictions.push({
+                modelId: 'heuristic_arch_v1',
+                label: rulePred.tags[0].label,
+                confidence: rulePred.tags[0].score,
+            });
+        }
+
+        // ML-based prediction
+        if (this.archNetModel) {
+            const mlPred = this.archNetModel.predictArchitecture(evidence);
+            if (mlPred && mlPred.tags && mlPred.tags.length > 0) {
+                predictions.push({
+                    modelId: 'archnet_bayes_v1',
+                    label: mlPred.tags[0].label,
+                    confidence: mlPred.tags[0].score,
+                });
+            }
+        }
+
+        // Use arbiter for consensus if enabled and multiple models
+        if (this.useArbiter && predictions.length > 1) {
+            const consensus = arbiter.arbitrate(predictions);
+            return {
+                tags: [{ label: consensus.label, score: consensus.confidence }],
+                model: 'arbiter',
+                contributing_models: consensus.contributing_models,
+                entropy: consensus.entropy,
+            };
+        }
+
+        // Fallback
+        if (predictions.length > 0) {
+            return {
+                tags: [{ label: predictions[0].label, score: predictions[0].confidence }],
+                model: predictions[0].modelId,
+            };
+        }
+
+        return { tags: [], model: 'none' };
+    }
+
+    /**
+     * Get model registry for external access
+     */
+    getModelRegistry() {
+        return modelRegistry;
     }
 }
+
