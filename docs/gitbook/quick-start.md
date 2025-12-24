@@ -109,16 +109,32 @@ node shannon.mjs \
 
 Shannon generates several outputs in the `./output` directory:
 
-```
-output/
-├── world-model.json        # Complete world model (Evidence + Target Model + Claims)
-├── findings.json           # Discovered vulnerabilities with exploits
-├── generated-code/         # Generated exploitation code
-│   ├── api-client.js
-│   ├── exploit-sqli.js
-│   └── tests/
-├── validation-results.json # Artifact validation results
-└── report.md              # Human-readable report
+```mermaid
+flowchart TD
+    classDef dir fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#e5e7eb,rx:6,ry:6
+    classDef file fill:#020617,stroke:#4b5563,stroke-width:1px,color:#e5e7eb,rx:4,ry:4
+    
+    output[output/]
+    wm[world-model.json]
+    findings[findings.json]
+    gc[generated-code/]
+    api[api-client.js]
+    exploit[exploit-sqli.js]
+    tests[tests/]
+    vr[validation-results.json]
+    report[report.md]
+    
+    output --> wm
+    output --> findings
+    output --> gc
+    output --> vr
+    output --> report
+    gc --> api
+    gc --> exploit
+    gc --> tests
+    
+    class output,gc,tests dir
+    class wm,findings,api,exploit,vr,report file
 ```
 
 ### Key Files to Check

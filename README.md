@@ -57,23 +57,27 @@ The **expectation** `E = b + a·u` gives us a probability estimate that honestly
 
 ## Core Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Shannon-Uncontained                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐   │
-│  │   Recon      │───▶│   World      │───▶│   Epistemic  │   │
-│  │   Agents     │    │   Model      │    │   Ledger     │   │
-│  └──────────────┘    └──────────────┘    └──────────────┘   │
-│         │                   │                   │            │
-│         ▼                   ▼                   ▼            │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐   │
-│  │   Evidence   │◀──▶│   Claims     │◀──▶│   EQBSL      │   │
-│  │   Graph      │    │   & Proofs   │    │   Tensors    │   │
-│  └──────────────┘    └──────────────┘    └──────────────┘   │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    classDef stage fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#e5e7eb,rx:6,ry:6
+    classDef store fill:#020617,stroke:#4b5563,stroke-width:1px,color:#e5e7eb,rx:4,ry:4
+    
+    RA[Recon<br/>Agents]
+    WM[World<br/>Model]
+    EL[Epistemic<br/>Ledger]
+    EG[Evidence<br/>Graph]
+    CP[Claims &<br/>Proofs]
+    ET[EQBSL<br/>Tensors]
+    
+    RA --> WM --> EL
+    RA --> EG
+    WM --> CP
+    EL --> ET
+    EG <--> CP
+    CP <--> ET
+    
+    class RA,WM,EL stage
+    class EG,CP,ET store
 ```
 
 ### Key Components
@@ -262,6 +266,25 @@ For complete configuration options, see [`.env.example`](.env.example).
 
 ## The Evidence-First Workflow
 
+```mermaid
+flowchart LR
+    classDef stage fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#e5e7eb,rx:6,ry:6
+    classDef store fill:#020617,stroke:#4b5563,stroke-width:1px,color:#e5e7eb,rx:4,ry:4
+    
+    RA[Recon<br/>Agents]
+    EG[Evidence<br/>Graph]
+    CE[Claims<br/>Engine]
+    EL[Epistemic<br/>Ledger]
+    
+    RA -->|emit events| EG
+    EG -->|derive claims| CE
+    CE -->|assign tensors| EL
+    EL -->|inform| RA
+    
+    class RA,CE stage
+    class EG,EL store
+```
+
 ### 1. Reconnaissance Phase
 
 Agents emit **evidence events** into the graph:
@@ -327,23 +350,46 @@ We are uncontained in the sense that our knowledge refuses to be boxed, our unce
 
 ## Project Structure
 
-```
-shannon-uncontained/
-├── shannon.mjs                 # CLI entry point
-├── local-source-generator.mjs  # Black-box recon orchestration
-├── src/
-│   ├── core/
-│   │   ├── WorldModel.js       # Central knowledge graph
-│   │   ├── BudgetManager.js    # Resource constraints
-│   │   └── EpistemicLedger.js  # EQBSL tensor management
-│   ├── cli/
-│   │   └── commands/           # CLI command handlers
-│   └── local-source-generator/
-│       └── v2/
-│           └── worldmodel/
-│               └── evidence-graph.js  # Append-only event store
-├── EQBSL-Primer.md             # Full EQBSL specification
-└── workspaces/                 # Generated reconnaissance outputs
+```mermaid
+flowchart TD
+    classDef dir fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#e5e7eb,rx:6,ry:6
+    classDef file fill:#020617,stroke:#4b5563,stroke-width:1px,color:#e5e7eb,rx:4,ry:4
+    
+    root[shannon-uncontained/]
+    shannon[shannon.mjs]
+    lsg[local-source-generator.mjs]
+    src[src/]
+    core[core/]
+    wm[WorldModel.js]
+    bm[BudgetManager.js]
+    el[EpistemicLedger.js]
+    cli[cli/]
+    cmd[commands/]
+    lsgdir[local-source-generator/]
+    v2[v2/]
+    wmdir[worldmodel/]
+    eg[evidence-graph.js]
+    eqbsl[EQBSL-Primer.md]
+    ws[workspaces/]
+    
+    root --> shannon
+    root --> lsg
+    root --> src
+    root --> eqbsl
+    root --> ws
+    src --> core
+    src --> cli
+    src --> lsgdir
+    core --> wm
+    core --> bm
+    core --> el
+    cli --> cmd
+    lsgdir --> v2
+    v2 --> wmdir
+    wmdir --> eg
+    
+    class root,src,core,cli,cmd,lsgdir,v2,wmdir,ws dir
+    class shannon,lsg,wm,bm,el,eg,eqbsl file
 ```
 
 ---

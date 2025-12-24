@@ -61,10 +61,28 @@ Shannon Uncontained introduces **Local Source Generator v2**, a novel architectu
 - Enables **deterministic code generation** from observations
 - Provides **perfect traceability** from findings to evidence
 
-```
-EvidenceGraph → TargetModel → ArtifactManifest
-       ↑              ↓
-  Recon Agents   Synthesis Agents
+```mermaid
+flowchart LR
+    classDef stage fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#e5e7eb,rx:6,ry:6
+    classDef store fill:#020617,stroke:#4b5563,stroke-width:1px,color:#e5e7eb,rx:4,ry:4
+    
+    subgraph Agents
+        RA[Recon<br/>Agents]
+        SA[Synthesis<br/>Agents]
+    end
+    
+    EG[Evidence<br/>Graph]
+    TM[Target<br/>Model]
+    AM[Artifact<br/>Manifest]
+    
+    RA -->|emit events| EG
+    EG -->|derive entities| TM
+    TM -->|generate code| AM
+    AM -->|feedback| EG
+    SA -->|generate| AM
+    
+    class RA,SA stage
+    class EG,TM,AM store
 ```
 
 ### 2. Epistemic Reasoning (EBSL/EQBSL)

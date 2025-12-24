@@ -8,11 +8,18 @@ LSG v2 (Local Source Generator version 2) is the core innovation of Shannon Unco
 
 Traditional penetration testing tools follow this pattern:
 
-```
-1. Run reconnaissance tools (nmap, nikto, etc.)
-2. Parse outputs into reports
-3. Hope they integrate somehow
-4. Generate findings
+```mermaid
+flowchart TD
+    classDef stage fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#e5e7eb,rx:6,ry:6
+    
+    RT[Run tools<br/>nmap, nikto, etc.]
+    PO[Parse outputs<br/>into reports]
+    HI[Hope they<br/>integrate somehow]
+    GF[Generate<br/>findings]
+    
+    RT --> PO --> HI --> GF
+    
+    class RT,PO,HI,GF stage
 ```
 
 This approach has fundamental problems:
@@ -37,32 +44,25 @@ Random IDs, timestamps, and execution order affect outputs. Same inputs don't pr
 
 LSG v2 solves these problems with a **deterministic data pipeline**:
 
-```
-┌─────────────────┐
-│ Reconnaissance  │ ← Tools produce raw observations
-└────────┬────────┘
-         │ normalize
-         ▼
-┌─────────────────┐
-│ EvidenceGraph   │ ← Immutable, content-hashed event store
-└────────┬────────┘
-         │ derive
-         ▼
-┌─────────────────┐
-│  TargetModel    │ ← Normalized entity graph with epistemic claims
-└────────┬────────┘
-         │ synthesize
-         ▼
-┌─────────────────┐
-│ArtifactManifest │ ← Generated code with validation results
-└────────┬────────┘
-         │ validate
-         ▼
-┌─────────────────┐
-│   Feedback      │ ← Evidence about artifact quality
-└─────────────────┘
-         │
-         └──> (loops back to EvidenceGraph)
+```mermaid
+flowchart TD
+    classDef stage fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#e5e7eb,rx:6,ry:6
+    classDef store fill:#020617,stroke:#4b5563,stroke-width:1px,color:#e5e7eb,rx:4,ry:4
+    
+    RC[Reconnaissance<br/>Tools produce raw observations]
+    EG[EvidenceGraph<br/>Immutable, content-hashed event store]
+    TM[TargetModel<br/>Normalized entity graph with epistemic claims]
+    AM[ArtifactManifest<br/>Generated code with validation results]
+    FB[Feedback<br/>Evidence about artifact quality]
+    
+    RC -->|normalize| EG
+    EG -->|derive| TM
+    TM -->|synthesize| AM
+    AM -->|validate| FB
+    FB -->|loops back| EG
+    
+    class RC,FB stage
+    class EG,TM,AM store
 ```
 
 ### Key Insight
