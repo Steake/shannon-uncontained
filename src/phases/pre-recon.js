@@ -138,9 +138,9 @@ async function runPreReconWave1(webUrl, sourceDir, variables, config, pipelineTe
   // Check if authentication config is provided for login instructions injection
   console.log(chalk.gray(`    → Config check: ${config ? 'present' : 'missing'}, Auth: ${config?.authentication ? 'present' : 'missing'}`));
 
-  const [nmap, subfinder, whatweb, naabu, codeAnalysis] = await Promise.all(operations);
+  const [nmap, subfinder, whatweb, codeAnalysis] = await Promise.all(operations);
 
-  return { nmap, subfinder, whatweb, naabu, codeAnalysis };
+  return { nmap, subfinder, whatweb, codeAnalysis };
 }
 
 // Wave 2: Additional scanning
@@ -190,10 +190,10 @@ async function runPreReconWave2(webUrl, sourceDir, toolAvailability, pipelineTes
 
 // Pure function: Stitch together pre-recon outputs and save to file
 async function stitchPreReconOutputs(outputs, sourceDir) {
-  const [nmap, subfinder, whatweb, naabu, codeAnalysis, ...additionalScans] = outputs;
+  const [nmap, subfinder, whatweb, , ...additionalScans] = outputs;
 
   // Try to read the code analysis deliverable file
-  let codeAnalysisContent = 'No analysis available';
+  let codeAnalysisContent;
   try {
     const codeAnalysisPath = path.join(sourceDir, 'deliverables', 'code_analysis_deliverable.md');
     codeAnalysisContent = await fs.readFile(codeAnalysisPath, 'utf8');

@@ -45,7 +45,7 @@ program
   .option('--max-tokens <n>', 'Max tokens allowed', parseInt)
   .option('--max-network-requests <n>', 'Max network requests', parseInt)
   .option('--max-tool-invocations <n>', 'Max tool invocations', parseInt)
-  .option('--skip-recon', 'Skip Shannon reconnaissance phase (starts at Phase 3)', true)
+  .option('--skip-recon', 'Skip Shannon reconnaissance phase (starts at Phase 3)')
   .option('--strategy <type>', 'Execution strategy: legacy (prompt-based) or agentic (agent-based)', 'legacy')
   .action(async (target, options) => {
     // Set global flags
@@ -268,8 +268,8 @@ osintCmd
       const agent = new EmailOSINTAgent();
       const result = await agent.execute(ctx, {
         email,
-        include_breaches: options.breaches !== false,
-        include_social: options.social !== false,
+        include_breaches: options.breaches ?? true,
+        include_social: options.social ?? true,
       });
 
       if (!result.success) {

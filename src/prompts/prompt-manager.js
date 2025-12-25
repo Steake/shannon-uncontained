@@ -133,7 +133,7 @@ async function interpolateVariables(template, variables, config = null) {
         'Variables must include webUrl and repoPath',
         'validation',
         false,
-        { variables: Object.keys(variables || {}) }
+        { variables: variables ? Object.keys(variables) : [] }
       );
     }
 

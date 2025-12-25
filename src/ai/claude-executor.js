@@ -260,7 +260,7 @@ async function runClaudePrompt(prompt, sourceDir, allowedTools = 'Read', context
                 console.log(colorFn(`${prefix} ${cleanedContent}`));
               } else {
                 // Full turn output for single agents
-                console.log(colorFn(`\n    🤖 Turn ${turnCount} (${description}):`))
+                console.log(colorFn(`\n    🤖 Turn ${turnCount} (${description}):`));
                 console.log(colorFn(`    ${cleanedContent}`));
               }
 
@@ -271,7 +271,7 @@ async function runClaudePrompt(prompt, sourceDir, allowedTools = 'Read', context
             }
           } else {
             // Full streaming output - show complete messages with specialist color
-            console.log(colorFn(`\n    🤖 Turn ${turnCount} (${description}):`))
+            console.log(colorFn(`\n    🤖 Turn ${turnCount} (${description}):`));
             console.log(colorFn(`    ${content}`));
           }
 
@@ -420,12 +420,6 @@ async function runClaudePrompt(prompt, sourceDir, allowedTools = 'Read', context
       console.log(chalk.yellow(`  ⚠️ API Error detected in ${description} - will validate deliverables before failing`));
     }
 
-    // Finish status line for parallel execution
-    if (statusManager) {
-      statusManager.clearAgentStatus(description);
-      statusManager.finishStatusLine();
-    }
-
     // NOTE: Log writing now handled by AuditSession (crash-safe, append-only)
     // Legacy log writing removed - audit system handles this automatically
 
@@ -464,12 +458,6 @@ async function runClaudePrompt(prompt, sourceDir, allowedTools = 'Read', context
     const duration = timer.stop();
     const agentKey = description.toLowerCase().replace(/\s+/g, '-');
     timingResults.agents[agentKey] = duration;
-
-    // Clear status for parallel execution before showing error
-    if (statusManager) {
-      statusManager.clearAgentStatus(description);
-      statusManager.finishStatusLine();
-    }
 
     // Log error to audit system
     if (auditSession) {
