@@ -268,8 +268,8 @@ osintCmd
       const agent = new EmailOSINTAgent();
       const result = await agent.execute(ctx, {
         email,
-        include_breaches: options.breaches ?? true,
-        include_social: options.social ?? true,
+        include_breaches: options.breaches === true || options.breaches === undefined,
+        include_social: options.social === true || options.social === undefined,
       });
 
       if (!result.success) {

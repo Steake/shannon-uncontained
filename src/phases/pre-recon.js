@@ -190,7 +190,7 @@ async function runPreReconWave2(webUrl, sourceDir, toolAvailability, pipelineTes
 
 // Pure function: Stitch together pre-recon outputs and save to file
 async function stitchPreReconOutputs(outputs, sourceDir) {
-  const [nmap, subfinder, whatweb, , ...additionalScans] = outputs;
+  const [nmap, subfinder, whatweb, _naabu, ...additionalScans] = outputs;
 
   // Try to read the code analysis deliverable file
   let codeAnalysisContent;
