@@ -225,4 +225,140 @@ program
     }
   });
 
+// OSINT COMMAND GROUP
+const osintCmd = program
+  .command('osint')
+  .description('Open Source Intelligence gathering');
+
+osintCmd
+  .command('email <email>')
+  .description('Gather intelligence on an email address')
+  .option('--no-breaches', 'Skip HaveIBeenPwned breach lookup')
+  .option('--no-social', 'Skip social account discovery')
+  .option('--json', 'Output as JSON')
+  .option('-o, --output <file>', 'Save results to file')
+  .action(async (email, options) => {
+    const { EmailOSINTAgent } = await import('./src/local-source-generator/v2/agents/recon/email-osint-agent.js');
+    const { EvidenceGraph } = await import('./src/local-source-generator/v2/worldmodel/evidence-graph.js');
+    const { EpistemicLedger } = await import('./src/core/EpistemicLedger.js');
+    const { AgentContext } = await import('./src/local-source-generator/v2/agents/base-agent.js');
+    const { fs } = await import('zx');
+
+    if (!options.json) {
+      console.log(chalk.cyan.bold('🔍 EMAIL OSINT'));
+      console.log(chalk.gray(`Target: ${email}`));
+      console.log('');
+    }
+
+    try {
+      // Create minimal context for standalone agent run
+      const evidenceGraph = new EvidenceGraph();
+      const ledger = new EpistemicLedger();
+
+      const ctx = new AgentContext({
+        evidenceGraph,
+        ledger,
+        targetModel: null,
+        manifest: null,
+        config: {},
+        budget: { max_time_ms: 60000, max_network_requests: 20 },
+      });
+
+      // Run agent
+      const agent = new EmailOSINTAgent();
+      const result = await agent.execute(ctx, {
+        email,
+        include_breaches: options.breaches !== false,
+        include_social: options.social !== false,
+      });
+
+      if (!result.success) {
+        console.error(chalk.red(`❌ Error: ${result.error}`));
+        process.exit(1);
+      }
+
+      const data = result.outputs;
+
+      // Output results
+      if (options.json) {
+        console.log(JSON.stringify(data, null, 2));
+      } else {
+        console.log(chalk.bold('📧 Email:'), data.email);
+        console.log(chalk.bold('🌐 Domain:'), data.domain);
+        console.log('');
+
+        // MX Records
+        if (data.mx_records.length > 0) {
+          console.log(chalk.bold.blue('📬 MX Records:'));
+          for (const mx of data.mx_records) {
+            console.log(`   ${mx}`);
+          }
+          console.log('');
+        }
+
+        // Reputation
+        if (data.reputation.reputation) {
+          const repColor = data.reputation.reputation === 'high' ? 'green' :
+            data.reputation.reputation === 'medium' ? 'yellow' : 'red';
+          console.log(chalk.bold.blue('⭐ Reputation:'), chalk[repColor](data.reputation.reputation));
+          if (data.reputation.suspicious) {
+            console.log(chalk.yellow('   ⚠️  Suspicious activity detected'));
+          }
+          if (data.reputation.profiles?.length > 0) {
+            console.log(`   Profiles: ${data.reputation.profiles.join(', ')}`);
+          }
+          console.log('');
+        }
+
+        // Breaches
+        if (data.breaches.length > 0) {
+          console.log(chalk.bold.red(`🔓 Breaches (${data.breaches.length}):`));
+          for (const breach of data.breaches) {
+            console.log(`   ${chalk.yellow(breach.name)} - ${breach.breach_date}`);
+            if (breach.data_classes?.length > 0) {
+              console.log(chalk.gray(`      Data: ${breach.data_classes.slice(0, 5).join(', ')}`));
+            }
+          }
+          console.log('');
+        } else if (data.sources_queried.includes('haveibeenpwned')) {
+          console.log(chalk.green('✅ No breaches found'));
+          console.log('');
+        }
+
+        // Social Accounts
+        if (data.social_accounts.length > 0) {
+          console.log(chalk.bold.blue(`👤 Social Accounts (${data.social_accounts.length}):`));
+          for (const account of data.social_accounts) {
+            console.log(`   ${account.service}`);
+          }
+          console.log('');
+        }
+
+        // Domain Info (Hunter.io)
+        if (data.domain_info.status) {
+          console.log(chalk.bold.blue('🏢 Domain Info:'));
+          console.log(`   Status: ${data.domain_info.status}`);
+          if (data.domain_info.company) console.log(`   Company: ${data.domain_info.company}`);
+          if (data.domain_info.first_name) console.log(`   Name: ${data.domain_info.first_name} ${data.domain_info.last_name || ''}`);
+          console.log('');
+        }
+
+        console.log(chalk.gray(`Sources: ${data.sources_queried.join(', ')}`));
+      }
+
+      // Save to file if requested
+      if (options.output) {
+        await fs.writeFile(options.output, JSON.stringify(data, null, 2));
+        if (!options.json) {
+          console.log(chalk.green(`\n✅ Results saved to: ${options.output}`));
+        }
+      }
+
+    } catch (error) {
+      console.error(chalk.red(`❌ Error: ${error.message}`));
+      if (program.opts().verbose) console.error(error.stack);
+      process.exit(1);
+    }
+  });
+
 program.parse();
