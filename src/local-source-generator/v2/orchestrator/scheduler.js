@@ -18,7 +18,7 @@ import { EpistemicLedger } from '../epistemics/ledger.js';
 import { AgentContext, AgentRegistry } from '../agents/base-agent.js';
 import { PipelineHealthMonitor } from './health-monitor.js';
 import { ReactiveVerifier } from '../verification/reactive-verifier.js';
-import { MetaCognition, HINT_TYPES, SEVERITY } from '../metacognition/meta-cognition.js';
+import { MetaCognition } from '../metacognition/meta-cognition.js';
 
 /**
  * Execution modes
@@ -80,8 +80,14 @@ export class Orchestrator extends EventEmitter {
         });
 
         // Initialize Meta-Cognition for uncertainty/contradiction detection
+        // NOTE: worldModel is null because LSGv2 uses separate components (EvidenceGraph, TargetModel, etc.)
+        // instead of the unified WorldModel class. MetaCognition gracefully handles null worldModel
+        // by skipping checks that require it. Full integration would require:
+        // 1. Adding getHighUncertaintyClaims/getControversialClaims to EpistemicLedger, OR
+        // 2. Creating a WorldModel adapter that wraps the v2 components, OR
+        // 3. Using src/core/WorldModel.js (v1 architecture)
         this.metaCognition = new MetaCognition({
-            worldModel: null, // Will be set when WorldModel is available
+            worldModel: null,
             ledger: this.ledger,
         });
 
@@ -178,15 +184,14 @@ export class Orchestrator extends EventEmitter {
         });
 
         // Handle success/failure with git callbacks
-        if (inputs.outputDir) {
+        if (inputs.outputDir && this.options.enableGitAutomation) {
             try {
-                // Disable git automation to prevent spam
-                // const { commitGitSuccess, rollbackGitWorkspace } = await import('../../../utils/git-manager.js');
-                // if (result.success) {
-                //     await commitGitSuccess(inputs.outputDir, agentName);
-                // } else {
-                //     await rollbackGitWorkspace(inputs.outputDir, `${agentName} failure`);
-                // }
+                const { commitGitSuccess, rollbackGitWorkspace } = await import('../../../utils/git-manager.js');
+                if (result.success) {
+                    await commitGitSuccess(inputs.outputDir, agentName);
+                } else {
+                    await rollbackGitWorkspace(inputs.outputDir, `${agentName} failure`);
+                }
             } catch (e) {
                 // Silently continue - git state management is optional
             }

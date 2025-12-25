@@ -131,8 +131,13 @@ export class AgentContext extends EventEmitter {
     const claim = this.ledger.upsertClaim(claimData);
     this.emittedClaims.push(claim.id);
 
-    // Auto-enqueue for reactive verification if verifier available
-    if (this.verifier && this.verifier.shouldVerify(claim)) {
+    // Auto-enqueue for reactive verification if verifier supports it
+    if (
+      this.verifier &&
+      typeof this.verifier.shouldVerify === 'function' &&
+      typeof this.verifier.enqueue === 'function' &&
+      this.verifier.shouldVerify(claim)
+    ) {
       this.verifier.enqueue(claim);
     }
 

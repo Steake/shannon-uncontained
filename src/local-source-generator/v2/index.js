@@ -73,7 +73,14 @@ export { EvaluationHarness, BenchmarkTarget, MetricCalculator, createStandardCor
 /**
  * Create a fully configured LSG v2 instance with all agents
  * @param {object} options - Configuration options
- * @returns {Orchestrator} Configured orchestrator
+ * @returns {object} Object containing { orchestrator } - BREAKING CHANGE: Previously returned orchestrator directly
+ * 
+ * @example
+ * // New usage (v2):
+ * const { orchestrator } = createLSGv2();
+ * 
+ * // Old usage (v1 - DEPRECATED):
+ * // const orchestrator = createLSGv2();
  */
 export function createLSGv2(options = {}) {
     const orchestrator = new _Orchestrator({
