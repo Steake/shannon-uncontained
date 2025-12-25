@@ -88,6 +88,7 @@ export function createLSGv2(options = {}) {
         maxParallel: options.maxParallel || 4,
         enableCaching: options.enableCaching !== false,
         streamDeltas: options.streamDeltas !== false,
+        enableGitAutomation: options.enableGitAutomation || false,
         epistemicConfig: options.epistemicConfig || {},
     });
 

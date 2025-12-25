@@ -54,6 +54,7 @@ export class Orchestrator extends EventEmitter {
             maxParallel: 4,
             enableCaching: true,
             streamDeltas: true,
+            enableGitAutomation: false,
             ...options,
         };
 
