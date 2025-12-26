@@ -328,7 +328,7 @@ const runParallelVuln = async (session, pipelineTestingMode, runClaudePromptWith
   const MIN_BASE_STAGGER_MS = 250;
   const MAX_BASE_STAGGER_MS = 5000;
 
-  const envStagger = Number.parseInt(process.env.VULN_AGENT_STAGGER_MS, 10);
+  const envStagger = Number(process.env.VULN_AGENT_STAGGER_MS);
   const baseStaggerMs = Number.isFinite(envStagger) && envStagger > 0
     ? Math.min(Math.max(envStagger, MIN_BASE_STAGGER_MS), MAX_BASE_STAGGER_MS)
     : (() => {
@@ -343,7 +343,8 @@ const runParallelVuln = async (session, pipelineTestingMode, runClaudePromptWith
   const results = await Promise.allSettled(
     activeAgents.map(async (agentName, index) => {
       // Add configurable/adaptive stagger to prevent API overwhelm
-      // Ensure staggers are distributed evenly without exceeding total stagger time
+      // First agent starts immediately (index 0), subsequent agents are staggered
+      // Math.min ensures the total stagger window doesn't exceed DEFAULT_TOTAL_STAGGER_MS
       const staggerDelayMs = index === 0 ? 0 : Math.min(baseStaggerMs * index, DEFAULT_TOTAL_STAGGER_MS);
       if (staggerDelayMs > 0) {
         await new Promise(resolve => setTimeout(resolve, staggerDelayMs));
