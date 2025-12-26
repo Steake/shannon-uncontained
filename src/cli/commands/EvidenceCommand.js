@@ -34,19 +34,29 @@ export async function evidenceCommand(action, workspace, options) {
 function printStats(data) {
     console.log(chalk.bold('\n📊 Evidence Graph Stats'));
     console.log(chalk.gray('─'.repeat(30)));
-    console.log(`Evidence Items:  ${chalk.cyan(data.evidence.length)}`);
-    console.log(`Claims Derived:  ${chalk.green(data.claims.length)}`);
-    console.log(`Artifacts:       ${chalk.yellow(data.artifacts.length)}`);
+
+    // Handle missing or differently-structured data gracefully
+    const evidence = data.evidence || [];
+    const claims = data.claims || [];
+    const artifacts = data.artifacts || [];
+
+    console.log(`Evidence Items:  ${chalk.cyan(evidence.length)}`);
+    console.log(`Claims Derived:  ${chalk.green(claims.length)}`);
+    console.log(`Artifacts:       ${chalk.yellow(artifacts.length)}`);
     console.log(chalk.gray('─'.repeat(30)));
 
     // Group by source agent
     const byAgent = {};
-    data.evidence.forEach(e => {
-        byAgent[e.sourceAgent] = (byAgent[e.sourceAgent] || 0) + 1;
+    evidence.forEach(e => {
+        if (e && e.sourceAgent) {
+            byAgent[e.sourceAgent] = (byAgent[e.sourceAgent] || 0) + 1;
+        }
     });
 
-    console.log(chalk.bold('\nSources:'));
-    Object.entries(byAgent).forEach(([agent, count]) => {
-        console.log(`  ${agent}: ${count}`);
-    });
+    if (Object.keys(byAgent).length > 0) {
+        console.log(chalk.bold('\nSources:'));
+        Object.entries(byAgent).forEach(([agent, count]) => {
+            console.log(`  ${agent}: ${count}`);
+        });
+    }
 }

@@ -291,6 +291,12 @@ export const EVENT_TYPES = {
     // Tool status
     TOOL_ERROR: 'tool_error',
     TOOL_TIMEOUT: 'tool_timeout',
+
+    // Email OSINT
+    EMAIL_INTEL: 'email_intel',
+    BREACH_DATA: 'breach_data',
+    EMAIL_REPUTATION: 'email_reputation',
+    SOCIAL_ACCOUNT: 'social_account',
 };
 
 export default EvidenceGraph;

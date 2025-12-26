@@ -15,6 +15,7 @@ import { OpenAPIDiscoveryAgent } from './openapi-discovery-agent.js';
 import { SitemapAgent } from './sitemap-agent.js';
 import { CORSProbeAgent } from './cors-probe-agent.js';
 import { BrowserCrawlerAgent } from './browser-crawler-agent.js';
+import { EmailOSINTAgent } from './email-osint-agent.js';
 
 export {
     NetReconAgent,
@@ -29,7 +30,8 @@ export {
     OpenAPIDiscoveryAgent,
     SitemapAgent,
     CORSProbeAgent,
-    BrowserCrawlerAgent
+    BrowserCrawlerAgent,
+    EmailOSINTAgent,
 };
 
 /**
@@ -50,4 +52,5 @@ export function registerReconAgents(orchestrator) {
     orchestrator.registerAgent(new WAFDetector());
     orchestrator.registerAgent(new CORSProbeAgent());        // CORS method discovery
     orchestrator.registerAgent(new BrowserCrawlerAgent());   // Stealth browser crawl
+    orchestrator.registerAgent(new EmailOSINTAgent());       // Email OSINT
 }

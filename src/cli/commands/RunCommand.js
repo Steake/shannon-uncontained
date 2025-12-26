@@ -148,6 +148,27 @@ export async function runCommand(target, options) {
                 // Domain profiling is optional, continue on error
             }
 
+            // 7. Active Validation (Strategy-based)
+            const strategy = options.strategy || 'legacy';
+
+            if (strategy === 'legacy') {
+                console.log(chalk.blue(`\n🚀 Executing Strategy: Legacy (Prompt-Based)`));
+                try {
+                    const { executeGeneratedTests } = await import('../execution-runner.js');
+                    // Pass skipRecon from CLI options; reconnaissance runs by default unless --skip-recon is provided
+                    const execOptions = { skipRecon: options.skipRecon === true };
+                    await executeGeneratedTests(target, workspace, execOptions);
+                } catch (e) {
+                    console.warn(chalk.yellow(`⚠️  Legacy Pentest failed: ${e.message}`));
+                }
+            } else if (strategy === 'agentic') {
+                console.log(chalk.blue(`\n🤖 Executing Strategy: Agentic (Agent-Based)`));
+                console.log(chalk.yellow('🚧 Agentic strategy is under construction. Future agents will run here.'));
+                // TODO: Invoke AgentOrchestrator here
+            } else {
+                console.warn(chalk.red(`⚠️ Unknown strategy: ${strategy}`));
+            }
+
             // Exit cleanly (prevents hanging from open handles like ReactiveVerifier queue)
             process.exit(0);
         } else {
