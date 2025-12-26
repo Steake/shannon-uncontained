@@ -23,6 +23,20 @@ export const EMAIL_EVENT_TYPES = {
     SOCIAL_ACCOUNT: 'social_account',
 };
 
+/**
+ * Email validation regex with improved domain validation.
+ * Pattern structure:
+ * - Local part: [^\s@]+ (any non-whitespace, non-@ characters)
+ * - @ separator
+ * - Domain labels: [\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?
+ *   * Must start and end with letter/number (Unicode supported)
+ *   * Hyphens allowed internally (max 63 chars per label)
+ *   * Prevents domains starting with hyphen
+ * - Multiple domain labels separated by dots
+ * - Requires at least 2-level domain (e.g., example.com)
+ */
+const EMAIL_VALIDATION_REGEX = /^[^\s@]+@[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?(?:\.[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?)+$/u;
+
 export class EmailOSINTAgent extends BaseAgent {
     constructor(options = {}) {
         super('EmailOSINTAgent', options);
@@ -116,7 +130,8 @@ export class EmailOSINTAgent extends BaseAgent {
             }));
         } catch (err) {
             // Domain might not have MX records; on any DNS error we fall back to an empty list.
-            console.log(chalk.gray(`EmailOSINTAgent: MX lookup failed for domain "${domain}": ${err?.message ?? err}`));
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            console.log(chalk.gray(`EmailOSINTAgent: MX lookup failed for domain "${domain}": ${errorMessage}`));
             results.mx_records = [];
         }
 
@@ -259,6 +274,9 @@ export class EmailOSINTAgent extends BaseAgent {
             this.setStatus('Querying Hunter.io...');
             ctx.recordNetworkRequest();
             try {
+                // TODO: Hunter.io API currently uses api_key as query parameter.
+                // This exposes keys in URLs/logs. Consider migrating to header-based auth
+                // once Hunter.io API support is verified (e.g., X-API-Key or Authorization header).
                 const hunterResponse = await fetch(
                     `https://api.hunter.io/v2/email-verifier?email=${encodeURIComponent(email)}&api_key=${hunterApiKey}`,
                     { headers: { 'Accept': 'application/json' } }
@@ -312,11 +330,10 @@ export class EmailOSINTAgent extends BaseAgent {
     }
 
     /**
-     * Validate email format
+     * Validate email format using the module-level EMAIL_VALIDATION_REGEX constant.
      */
     isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
+        return EMAIL_VALIDATION_REGEX.test(email);
     }
 
     /**
@@ -328,7 +345,8 @@ export class EmailOSINTAgent extends BaseAgent {
 
         for (const line of lines) {
             // Holehe format: [+] service: email exists
-            const match = line.match(/\[\+\]\s*(\w+)/i);
+            // Match service names including hyphens and dots (e.g., "linkedin-jobs", "github.com")
+            const match = line.match(/\[\+\]\s*([\w.-]+)/i);
             if (match) {
                 accounts.push({
                     service: match[1],

@@ -133,11 +133,13 @@ async function interpolateVariables(template, variables, config = null) {
       typeof variables.webUrl !== 'string' ||
       typeof variables.repoPath !== 'string'
     ) {
+      const variableKeys =
+        typeof variables === 'object' ? Object.keys(variables) : [];
       throw new PentestError(
         'Variables must include webUrl and repoPath',
         'validation',
         false,
-        { variables: variables == null ? [] : Object.keys(variables) }
+        { variables: variableKeys }
       );
     }
 

@@ -228,6 +228,7 @@ export const createSession = async (webUrl, repoPath, configFile = null, targetR
   // This is the canonical session structure used throughout the codebase
   const session = {
     id: sessionId,
+    sessionId: sessionId, // Backward-compatibility alias for any legacy code
     webUrl,
     repoPath,
     configFile,
