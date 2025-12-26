@@ -260,14 +260,12 @@ export class EmailOSINTAgent extends BaseAgent {
             this.setStatus('Querying Hunter.io...');
             ctx.recordNetworkRequest();
             try {
+                // TODO: Hunter.io API currently uses api_key as query parameter.
+                // This exposes keys in URLs/logs. Consider migrating to header-based auth
+                // once Hunter.io API support is verified (e.g., X-API-Key or Authorization header).
                 const hunterResponse = await fetch(
-                    `https://api.hunter.io/v2/email-verifier?email=${encodeURIComponent(email)}`,
-                    { 
-                        headers: { 
-                            'Accept': 'application/json',
-                            'Authorization': `Bearer ${hunterApiKey}`
-                        } 
-                    }
+                    `https://api.hunter.io/v2/email-verifier?email=${encodeURIComponent(email)}&api_key=${hunterApiKey}`,
+                    { headers: { 'Accept': 'application/json' } }
                 );
 
                 if (hunterResponse.ok) {
