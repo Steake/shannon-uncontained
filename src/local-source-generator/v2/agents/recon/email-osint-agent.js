@@ -211,8 +211,10 @@ export class EmailOSINTAgent extends BaseAgent {
                     } else {
                         console.log(chalk.yellow(`⚠️  HIBP API v3 requires an API key (set HIBP_API_KEY environment variable)`));
                     }
+                    results.sources_queried.push('haveibeenpwned');
                 } else if (hibpResponse.status === 429) {
                     console.log(chalk.yellow(`⚠️  HIBP rate limit exceeded (429 response)`));
+                    results.sources_queried.push('haveibeenpwned');
                 }
                 // Other status codes are logged in catch block
             } catch (error) {
