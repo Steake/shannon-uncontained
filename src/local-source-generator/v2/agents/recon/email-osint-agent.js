@@ -13,6 +13,7 @@ import { BaseAgent } from '../base-agent.js';
 import { runToolWithRetry, isToolAvailable, getToolTimeout } from '../../tools/runners/tool-runner.js';
 import { createEvidenceEvent, EVENT_TYPES } from '../../worldmodel/evidence-graph.js';
 import dns from 'dns/promises';
+import chalk from 'chalk';
 
 // Extend EVENT_TYPES for email OSINT (exported for use elsewhere)
 export const EMAIL_EVENT_TYPES = {
@@ -115,9 +116,7 @@ export class EmailOSINTAgent extends BaseAgent {
             }));
         } catch (err) {
             // Domain might not have MX records; on any DNS error we fall back to an empty list.
-            // Log at debug level so unexpected failures can be investigated without affecting flow.
-            // eslint-disable-next-line no-console
-            console.debug(`EmailOSINTAgent: MX lookup failed for domain "${domain}":`, err?.message ?? err);
+            console.log(chalk.gray(`EmailOSINTAgent: MX lookup failed for domain "${domain}": ${err?.message ?? err}`));
             results.mx_records = [];
         }
 
@@ -151,11 +150,9 @@ export class EmailOSINTAgent extends BaseAgent {
                 }));
             }
         } catch (error) {
-            // EmailRep might be rate-limited or unavailable; log at debug level for diagnostics.
-            console.debug('EmailOSINTAgent: EmailRep.io request failed', {
-                email,
-                error: error instanceof Error ? error.message : String(error),
-            });
+            // EmailRep might be rate-limited or unavailable
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            console.log(chalk.gray(`EmailOSINTAgent: EmailRep.io request failed for ${email}: ${errorMsg}`));
         }
 
         // 3. HaveIBeenPwned (public breach lookup - rate limited)
@@ -207,14 +204,21 @@ export class EmailOSINTAgent extends BaseAgent {
                 } else if (hibpResponse.status === 404) {
                     // No breaches found - this is good news
                     results.sources_queried.push('haveibeenpwned');
+                } else if (hibpResponse.status === 401) {
+                    // Authentication failed - API key is invalid or missing
+                    if (hibpApiKey) {
+                        console.log(chalk.yellow(`⚠️  HIBP API key appears invalid (401 response)`));
+                    } else {
+                        console.log(chalk.yellow(`⚠️  HIBP API v3 requires an API key (set HIBP_API_KEY environment variable)`));
+                    }
+                } else if (hibpResponse.status === 429) {
+                    console.log(chalk.yellow(`⚠️  HIBP rate limit exceeded (429 response)`));
                 }
-                // 401 = needs API key, 429 = rate limited
+                // Other status codes are logged in catch block
             } catch (error) {
-                // HIBP might be unavailable; log at debug level for diagnostics.
-                console.debug('EmailOSINTAgent: HaveIBeenPwned request failed', {
-                    email,
-                    error: error instanceof Error ? error.message : String(error),
-                });
+                // HIBP might be unavailable
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                console.log(chalk.gray(`EmailOSINTAgent: HaveIBeenPwned request failed for ${email}: ${errorMsg}`));
             }
         }
 
@@ -281,11 +285,9 @@ export class EmailOSINTAgent extends BaseAgent {
                     }
                 }
             } catch (error) {
-                // Hunter.io might be unavailable or the request may have failed; log at debug level for diagnostics.
-                console.debug('EmailOSINTAgent: Hunter.io request failed', {
-                    email,
-                    error: error instanceof Error ? error.message : String(error),
-                });
+                // Hunter.io might be unavailable or the request may have failed
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                console.log(chalk.gray(`EmailOSINTAgent: Hunter.io request failed for ${email}: ${errorMsg}`));
             }
         }
 

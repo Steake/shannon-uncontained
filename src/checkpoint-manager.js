@@ -303,30 +303,6 @@ const runSingleAgent = async (agentName, session, pipelineTestingMode, runClaude
   }
 };
 
-// Run multiple agents in sequence
-const runAgentRange = async (startAgent, endAgent, session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt) => {
-  const agents = validateAgentRange(startAgent, endAgent);
-  
-  console.log(chalk.cyan(`\n🔄 Running agent range: ${startAgent} to ${endAgent} (${agents.length} agents)`));
-  
-  for (const agent of agents) {
-    // Skip if already completed
-    if (session.completedAgents.includes(agent.name)) {
-      console.log(chalk.gray(`⏭️  Agent '${agent.name}' already completed, skipping`));
-      continue;
-    }
-    
-    try {
-      await runSingleAgent(agent.name, session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt);
-    } catch (error) {
-      console.log(chalk.red(`❌ Agent range execution stopped at '${agent.name}' due to failure`));
-      throw error;
-    }
-  }
-  
-  console.log(chalk.green(`✅ Agent range ${startAgent} to ${endAgent} completed successfully`));
-};
-
 // Run vulnerability agents in parallel
 const runParallelVuln = async (session, pipelineTestingMode, runClaudePromptWithRetry, loadPrompt) => {
   const vulnAgents = ['injection-vuln', 'xss-vuln', 'auth-vuln', 'ssrf-vuln', 'authz-vuln'];
@@ -343,11 +319,33 @@ const runParallelVuln = async (session, pipelineTestingMode, runClaudePromptWith
 
   const startTime = Date.now();
 
+  // Determine stagger delay between starting each vulnerability agent.
+  // Priority:
+  //  1. Use VULN_AGENT_STAGGER_MS env var if set to a positive integer.
+  //  2. Otherwise, adaptively choose a base stagger so that the total
+  //     spread remains roughly similar to the original behavior (~8s).
+  const DEFAULT_TOTAL_STAGGER_MS = 8000;
+  const MIN_BASE_STAGGER_MS = 250;
+  const MAX_BASE_STAGGER_MS = 5000;
+
+  const envStagger = Number.parseInt(process.env.VULN_AGENT_STAGGER_MS ?? '', 10);
+  const baseStaggerMs = Number.isFinite(envStagger) && envStagger > 0
+    ? Math.min(Math.max(envStagger, MIN_BASE_STAGGER_MS), MAX_BASE_STAGGER_MS)
+    : (() => {
+        const agentCount = Math.max(1, activeAgents.length);
+        const steps = Math.max(1, agentCount - 1);
+        const adaptiveBase = Math.floor(DEFAULT_TOTAL_STAGGER_MS / steps);
+        return Math.min(Math.max(adaptiveBase, MIN_BASE_STAGGER_MS), MAX_BASE_STAGGER_MS);
+      })();
+
   // Collect all results without logging individual completions
   const results = await Promise.allSettled(
     activeAgents.map(async (agentName, index) => {
-      // Add 2-second stagger to prevent API overwhelm
-      await new Promise(resolve => setTimeout(resolve, index * 2000));
+      // Add configurable/adaptive stagger to prevent API overwhelm
+      const staggerDelayMs = Math.min(baseStaggerMs * index, DEFAULT_TOTAL_STAGGER_MS);
+      if (staggerDelayMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, staggerDelayMs));
+      }
 
       let lastError;
       let attempts = 0;
