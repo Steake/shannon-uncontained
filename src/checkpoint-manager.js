@@ -330,12 +330,13 @@ const runParallelVuln = async (session, pipelineTestingMode, runClaudePromptWith
 
   const envStagger = Number(process.env.VULN_AGENT_STAGGER_MS);
   const baseStaggerMs = Number.isFinite(envStagger) && envStagger > 0
-    ? Math.min(Math.max(envStagger, MIN_BASE_STAGGER_MS), MAX_BASE_STAGGER_MS)
+    ? Math.min(Math.max(envStagger, MIN_BASE_STAGGER_MS), MAX_BASE_STAGGER_MS)  // Clamp env var for safety
     : (() => {
         const agentCount = Math.max(1, activeAgents.length);
         const steps = Math.max(1, agentCount - 1);
         const adaptiveBase = Math.floor(DEFAULT_TOTAL_STAGGER_MS / steps);
-        // For adaptive calculation, don't clamp to MAX_BASE_STAGGER_MS - only enforce minimum
+        // Adaptive calculation naturally produces reasonable values based on agent count
+        // Only enforce minimum to prevent extremely fast/zero staggers
         return Math.max(adaptiveBase, MIN_BASE_STAGGER_MS);
       })();
 

@@ -249,9 +249,8 @@ osintCmd
     } catch (error) {
       console.error(chalk.red('❌ Failed to load OSINT dependencies. Please ensure all required packages are installed.'));
       console.error(chalk.red(`Details: ${error.message}`));
-      // Check for verbose flag from parent command or global SHANNON_VERBOSE
-      const isVerbose = options.parent?.verbose || global.SHANNON_VERBOSE || process.env.SHANNON_VERBOSE;
-      if (isVerbose && error.stack) {
+      // Check for verbose flag from global options
+      if (program.opts().verbose && error.stack) {
         console.error(chalk.gray(error.stack));
       }
       process.exit(1);
