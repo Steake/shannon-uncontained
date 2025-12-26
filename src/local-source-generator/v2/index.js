@@ -73,14 +73,28 @@ export { EvaluationHarness, BenchmarkTarget, MetricCalculator, createStandardCor
 /**
  * Create a fully configured LSG v2 instance with all agents
  * @param {object} options - Configuration options
- * @returns {Orchestrator} Configured orchestrator
+ * @param {string} [options.mode='live'] - Execution mode (live, replay, dry_run)
+ * @param {number} [options.maxParallel=4] - Maximum parallel agents
+ * @param {boolean} [options.enableCaching=true] - Enable result caching
+ * @param {boolean} [options.streamDeltas=true] - Enable delta streaming
+ * @param {boolean} [options.enableGitAutomation=false] - Enable git automation for commit/rollback
+ * @param {object} [options.epistemicConfig={}] - Epistemic configuration
+ * @returns {object} Object containing { orchestrator } - BREAKING CHANGE: Previously returned orchestrator directly
+ * 
+ * @example
+ * // New usage (v2):
+ * const { orchestrator } = createLSGv2();
+ * 
+ * // Old usage (v1 - DEPRECATED):
+ * // const orchestrator = createLSGv2();
  */
 export function createLSGv2(options = {}) {
     const orchestrator = new _Orchestrator({
         mode: options.mode || 'live',
         maxParallel: options.maxParallel || 4,
-        enableCaching: options.enableCaching !== false,
-        streamDeltas: options.streamDeltas !== false,
+        enableCaching: options.enableCaching ?? true,
+        streamDeltas: options.streamDeltas ?? true,
+        enableGitAutomation: options.enableGitAutomation ?? false,
         epistemicConfig: options.epistemicConfig || {},
     });
 

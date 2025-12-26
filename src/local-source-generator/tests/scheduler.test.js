@@ -5,7 +5,7 @@
  */
 
 import { strict as assert } from 'node:assert';
-import { test, describe, beforeEach, afterEach, mock } from 'node:test';
+import { test, describe, beforeEach } from 'node:test';
 import { Orchestrator, PipelineStage } from '../v2/orchestrator/scheduler.js';
 import { AgentRegistry, BaseAgent } from '../v2/agents/base-agent.js';
 

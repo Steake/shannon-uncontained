@@ -3,7 +3,6 @@ const tf = require('@tensorflow/tfjs-node');
 const { fs, path, glob } = require('zx');
 
 // Configuration
-const DATA_DIR = path.join(process.cwd(), 'shannon-results/repos');
 const MODEL_DIR = path.join(process.cwd(), 'models');
 const EPOCHS = 5;
 const BATCH_SIZE = 32;
