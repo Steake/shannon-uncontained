@@ -4,7 +4,7 @@
 // it under the terms of the GNU Affero General Public License version 3
 // as published by the Free Software Foundation.
 
-import { fs, path, $ } from 'zx';
+import { fs, path } from 'zx';
 import chalk from 'chalk';
 import { PentestError } from './error-handling.js';
 import { parseConfig, distributeConfig } from './config-parser.js';
@@ -13,7 +13,6 @@ import { formatDuration } from './audit/utils.js';
 import {
   AGENTS,
   PHASES,
-  selectSession,
   validateAgent,
   validateAgentRange,
   validatePhase,
@@ -22,8 +21,7 @@ import {
   markAgentCompleted,
   markAgentFailed,
   getSessionStatus,
-  rollbackToAgent,
-  updateSession
+  rollbackToAgent
 } from './session-manager.js';
 
 // Check if target repository exists and is accessible

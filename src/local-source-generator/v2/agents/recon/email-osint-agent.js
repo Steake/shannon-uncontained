@@ -114,7 +114,10 @@ export class EmailOSINTAgent extends BaseAgent {
                 },
             }));
         } catch (err) {
-            // Domain might not have MX records
+            // Domain might not have MX records; on any DNS error we fall back to an empty list.
+            // Log at debug level so unexpected failures can be investigated without affecting flow.
+            // eslint-disable-next-line no-console
+            console.debug(`EmailOSINTAgent: MX lookup failed for domain "${domain}":`, err?.message ?? err);
             results.mx_records = [];
         }
 
@@ -147,8 +150,12 @@ export class EmailOSINTAgent extends BaseAgent {
                     payload: results.reputation,
                 }));
             }
-        } catch {
-            // EmailRep might be rate-limited or unavailable
+        } catch (error) {
+            // EmailRep might be rate-limited or unavailable; log at debug level for diagnostics.
+            console.debug('EmailOSINTAgent: EmailRep.io request failed', {
+                email,
+                error: error instanceof Error ? error.message : String(error),
+            });
         }
 
         // 3. HaveIBeenPwned (public breach lookup - rate limited)
@@ -202,8 +209,12 @@ export class EmailOSINTAgent extends BaseAgent {
                     results.sources_queried.push('haveibeenpwned');
                 }
                 // 401 = needs API key, 429 = rate limited
-            } catch {
-                // HIBP might be unavailable
+            } catch (error) {
+                // HIBP might be unavailable; log at debug level for diagnostics.
+                console.debug('EmailOSINTAgent: HaveIBeenPwned request failed', {
+                    email,
+                    error: error instanceof Error ? error.message : String(error),
+                });
             }
         }
 
@@ -269,8 +280,12 @@ export class EmailOSINTAgent extends BaseAgent {
                         }));
                     }
                 }
-            } catch {
-                // Hunter.io might be unavailable
+            } catch (error) {
+                // Hunter.io might be unavailable or the request may have failed; log at debug level for diagnostics.
+                console.debug('EmailOSINTAgent: Hunter.io request failed', {
+                    email,
+                    error: error instanceof Error ? error.message : String(error),
+                });
             }
         }
 

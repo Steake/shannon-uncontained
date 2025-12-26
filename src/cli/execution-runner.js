@@ -1,4 +1,3 @@
-import { fs, path, $ } from 'zx';
 import chalk from 'chalk';
 
 /**
@@ -17,8 +16,8 @@ export async function executeGeneratedTests(target, workspace, options = {}) {
 
         // Run the full Shannon pentest pipeline on the generated source
         // effectively treating the LSG output as the "Done Recon" state if skipRecon is true
-        // Default skipRecon to true if not provided, as this is the standard flow for execution-runner
-        const shouldSkipRecon = options.skipRecon !== undefined ? options.skipRecon : true;
+        // By default, do not skip recon unless explicitly requested via options.skipRecon
+        const shouldSkipRecon = options.skipRecon === true;
 
         const result = await runLegacyPentest(target, workspace, {
             disableLoader: false, // Show progress

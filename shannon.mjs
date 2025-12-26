@@ -45,7 +45,7 @@ program
   .option('--max-tokens <n>', 'Max tokens allowed', parseInt)
   .option('--max-network-requests <n>', 'Max network requests', parseInt)
   .option('--max-tool-invocations <n>', 'Max tool invocations', parseInt)
-  .option('--skip-recon', 'Skip Shannon reconnaissance phase (starts at Phase 3)', true)
+  .option('--skip-recon', 'Skip Shannon reconnaissance phase (starts at Phase 3)')
   .option('--strategy <type>', 'Execution strategy: legacy (prompt-based) or agentic (agent-based)', 'legacy')
   .action(async (target, options) => {
     // Set global flags

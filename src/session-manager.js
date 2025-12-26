@@ -309,7 +309,6 @@ export const selectSession = async () => {
     // Use dynamic status calculation instead of stored status
     const { status } = getSessionStatus(session);
     const statusColor = status === 'completed' ? chalk.green : chalk.blue;
-    const statusIcon = status === 'completed' ? '✅' : '🔄';
 
     console.log(statusColor(`${index + 1}) ${new URL(session.webUrl).hostname} + ${path.basename(session.repoPath)} [${status}]`));
     console.log(chalk.gray(`   Last activity: ${timeAgo}, Completed: ${completedCount}/${totalAgents} agents`));
@@ -400,7 +399,6 @@ export const checkPrerequisites = (session, agentName) => {
 // Get next suggested agent
 export const getNextAgent = (session) => {
   const completed = new Set(session.completedAgents);
-  const failed = new Set(session.failedAgents);
   
   // Find the next agent that hasn't been completed and has all prerequisites
   const nextAgent = Object.values(AGENTS)

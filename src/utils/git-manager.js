@@ -111,8 +111,8 @@ const cleanWorkspace = async (sourceDir, reason = 'clean start') => {
 export const createGitCheckpoint = async (sourceDir, description, attempt) => {
   console.log(chalk.blue(`    📍 Creating checkpoint for ${description} (attempt ${attempt})`));
   try {
-    // Only clean workspace on retry attempts (attempt > 1), not on first attempts
-    // This preserves deliverables between agents while still cleaning on actual retries
+    // Clean workspace only on retry attempts (attempt > 1); skip cleanup on the first attempt (attempt === 1)
+    // This keeps deliverables from previous agents for the initial run while still cleaning the workspace on actual retries
     if (attempt > 1) {
       const cleanResult = await cleanWorkspace(sourceDir, `${description} (retry cleanup)`);
       if (!cleanResult.success) {

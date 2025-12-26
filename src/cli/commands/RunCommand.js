@@ -155,8 +155,8 @@ export async function runCommand(target, options) {
                 console.log(chalk.blue(`\n🚀 Executing Strategy: Legacy (Prompt-Based)`));
                 try {
                     const { executeGeneratedTests } = await import('../execution-runner.js');
-                    // Pass skipRecon from CLI options (defaults to true for run command)
-                    const execOptions = { skipRecon: options.skipRecon !== false };
+                    // Pass skipRecon from CLI options; reconnaissance runs by default unless --skip-recon is provided
+                    const execOptions = { skipRecon: options.skipRecon === true };
                     await executeGeneratedTests(target, workspace, execOptions);
                 } catch (e) {
                     console.warn(chalk.yellow(`⚠️  Legacy Pentest failed: ${e.message}`));
