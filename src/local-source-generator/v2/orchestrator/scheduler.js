@@ -17,6 +17,8 @@ import { ArtifactManifest } from '../worldmodel/artifact-manifest.js';
 import { EpistemicLedger } from '../epistemics/ledger.js';
 import { AgentContext, AgentRegistry } from '../agents/base-agent.js';
 import { PipelineHealthMonitor } from './health-monitor.js';
+import { ReactiveVerifier } from '../verification/reactive-verifier.js';
+import { MetaCognition } from '../metacognition/meta-cognition.js';
 
 /**
  * Execution modes
@@ -52,6 +54,7 @@ export class Orchestrator extends EventEmitter {
             maxParallel: 4,
             enableCaching: true,
             streamDeltas: true,
+            enableGitAutomation: false,
             ...options,
         };
 
@@ -69,6 +72,26 @@ export class Orchestrator extends EventEmitter {
             maxConcurrency: options.parallel || 5,
             windowSizeMs: 60000
         });
+
+        // Initialize Reactive Verifier for closed-loop verification
+        this.verifier = new ReactiveVerifier({
+            ledger: this.ledger,
+            concurrency: 3,
+            minConfidence: 0.6,
+        });
+
+        // Initialize Meta-Cognition for uncertainty/contradiction detection
+        // NOTE: worldModel is null because LSGv2 uses separate components (EvidenceGraph, TargetModel, etc.)
+        // instead of the unified WorldModel class. MetaCognition gracefully handles null worldModel
+        // by skipping checks that require it. Full integration would require:
+        // 1. Adding getHighUncertaintyClaims/getControversialClaims to EpistemicLedger, OR
+        // 2. Creating a WorldModel adapter that wraps the v2 components, OR
+        // 3. Using src/core/WorldModel.js (v1 architecture)
+        this.metaCognition = new MetaCognition({
+            worldModel: null,
+            ledger: this.ledger,
+        });
+
         // Execution state
         this.cache = new Map(); // idempotencyKey -> result
         this.executionLog = [];
@@ -95,6 +118,7 @@ export class Orchestrator extends EventEmitter {
             targetModel: this.targetModel,
             ledger: this.ledger,
             manifest: this.manifest,
+            verifier: this.verifier,  // Enable closed-loop verification
             config: this.options,
             budget,
         });
@@ -161,7 +185,7 @@ export class Orchestrator extends EventEmitter {
         });
 
         // Handle success/failure with git callbacks
-        if (inputs.outputDir) {
+        if (inputs.outputDir && this.options.enableGitAutomation) {
             try {
                 const { commitGitSuccess, rollbackGitWorkspace } = await import('../../../utils/git-manager.js');
                 if (result.success) {
@@ -533,6 +557,61 @@ export class Orchestrator extends EventEmitter {
             target,
             outputDir,
         };
+    }
+
+    /**
+     * Run a single agent on an existing workspace
+     * Useful for debugging and iterating on specific agents
+     * 
+     * @param {string} agentName - Name of the agent to run
+     * @param {string} target - Target URL
+     * @param {string} outputDir - Workspace directory (must exist)
+     * @returns {Promise<object>} Agent result
+     */
+    async runSingleAgent(agentName, target, outputDir) {
+        const { fs, path } = await import('zx');
+
+        // Load existing workspace
+        const worldModelPath = path.join(outputDir, 'world-model.json');
+        if (await fs.pathExists(worldModelPath)) {
+            const data = await fs.readJSON(worldModelPath);
+
+            // Import model components
+            this.targetModel.import(data.target_model || data);
+            if (data.evidence_graph) this.evidenceGraph.import(data.evidence_graph);
+            if (data.ledger) this.ledger.import(data.ledger);
+            if (data.manifest) this.manifest.import(data.manifest);
+
+            // Re-derive entities from evidence (ensures endpoints are populated)
+            this.targetModel.deriveFromEvidence(this.evidenceGraph, this.ledger);
+
+            console.log(`[Orchestrator] Loaded world-model.json from ${outputDir} (${this.targetModel.getEndpoints().length} endpoints, ${this.evidenceGraph.stats().total_events} events)`);
+        }
+
+        // Check if agent exists
+        const agent = this.registry.get(agentName);
+        if (!agent) {
+            const available = this.registry.list().join(', ');
+            return {
+                success: false,
+                error: `Agent "${agentName}" not found. Available: ${available}`,
+            };
+        }
+
+        const inputs = { target, outputDir };
+
+        this.emit('agent:start', { agent: agentName });
+        const result = await this.executeAgent(agentName, inputs);
+        this.emit('agent:complete', { agent: agentName, result });
+
+        // Save updated world model
+        if (result.success) {
+            const exported = this.exportState();
+            await fs.writeJSON(worldModelPath, exported, { spaces: 2 });
+            console.log(`[Orchestrator] World model saved to ${worldModelPath} (${this.targetModel.getEndpoints().length} endpoints)`);
+        }
+
+        return result;
     }
 
     /**

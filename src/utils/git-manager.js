@@ -7,13 +7,6 @@
 import { $ } from 'zx';
 import chalk from 'chalk';
 
-// Silence zx command output to prevent newline spam in CLI
-$.quiet = true;
-$.verbose = false;
-
-// Check if verbose mode is enabled
-const isVerbose = () => process.env.LSG_VERBOSE || process.argv.includes('--verbose') || process.argv.includes('-v');
-
 // Global git operations semaphore to prevent index.lock conflicts during parallel execution
 class GitSemaphore {
   constructor() {
@@ -44,6 +37,12 @@ class GitSemaphore {
 
 const gitSemaphore = new GitSemaphore();
 
+/**
+ * Check if verbose logging is enabled for git operations.
+ * Returns true if either global.SHANNON_VERBOSE or process.env.DEBUG is set.
+ */
+const isVerboseMode = () => global.SHANNON_VERBOSE || process.env.DEBUG;
+
 // Execute git commands with retry logic for index.lock conflicts
 export const executeGitCommandWithRetry = async (commandArgs, sourceDir, description, maxRetries = 5) => {
   await gitSemaphore.acquire();
@@ -64,14 +63,14 @@ export const executeGitCommandWithRetry = async (commandArgs, sourceDir, descrip
         return result;
       } catch (error) {
         const isLockError = error.message.includes('index.lock') ||
-          error.message.includes('unable to lock') ||
-          error.message.includes('Another git process') ||
-          error.message.includes('fatal: Unable to create') ||
-          error.message.includes('fatal: index file');
+                           error.message.includes('unable to lock') ||
+                           error.message.includes('Another git process') ||
+                           error.message.includes('fatal: Unable to create') ||
+                           error.message.includes('fatal: index file');
 
         if (isLockError && attempt < maxRetries) {
           const delay = Math.pow(2, attempt - 1) * 1000; // Exponential backoff: 1s, 2s, 4s, 8s, 16s
-          if (isVerbose()) console.log(chalk.yellow(`    ⚠️ Git lock conflict during ${description} (attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`));
+          console.log(chalk.yellow(`    ⚠️ Git lock conflict during ${description} (attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`));
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
@@ -84,32 +83,68 @@ export const executeGitCommandWithRetry = async (commandArgs, sourceDir, descrip
   }
 };
 
-// Pure functions for Git workspace management - silenced for cleaner CLI
+// Pure functions for Git workspace management
 const cleanWorkspace = async (sourceDir, reason = 'clean start') => {
+  const isVerbose = isVerboseMode();
+  if (isVerbose) {
+    console.log(chalk.blue(`    🧹 Cleaning workspace for ${reason}`));
+  }
   try {
     // Check for uncommitted changes
     const status = await $`cd ${sourceDir} && git status --porcelain`;
     const hasChanges = status.stdout.trim().length > 0;
 
     if (hasChanges) {
+      // Show what we're about to remove
+      const changes = status.stdout.trim().split('\n').filter(line => line.length > 0);
+      if (isVerbose) {
+        console.log(chalk.yellow(`    🔄 Rolling back workspace for ${reason}`));
+      }
+
       await $`cd ${sourceDir} && git reset --hard HEAD`;
       await $`cd ${sourceDir} && git clean -fd`;
+
+      if (isVerbose) {
+        console.log(chalk.yellow(`    ✅ Rollback completed - removed ${changes.length} contaminated changes:`));
+        changes.slice(0, 3).forEach(change => console.log(chalk.gray(`       ${change}`)));
+        if (changes.length > 3) {
+          console.log(chalk.gray(`       ... and ${changes.length - 3} more files`));
+        }
+      }
+    } else {
+      if (isVerbose) {
+        console.log(chalk.blue(`    ✅ Workspace already clean (no changes to remove)`));
+      }
     }
     return { success: true, hadChanges: hasChanges };
   } catch (error) {
+    if (isVerbose) {
+      console.log(chalk.yellow(`    ⚠️ Workspace cleanup failed: ${error.message}`));
+    }
     return { success: false, error };
   }
 };
 
 export const createGitCheckpoint = async (sourceDir, description, attempt) => {
+  const isVerbose = isVerboseMode();
+  if (isVerbose) {
+    console.log(chalk.blue(`    📍 Creating checkpoint for ${description} (attempt ${attempt})`));
+  }
   try {
-    // Only clean workspace on retry attempts (attempt > 1), not on first attempts
+    // Clean workspace only on retry attempts (attempt > 1); skip cleanup on the first attempt (attempt === 1)
+    // This keeps deliverables from previous agents for the initial run while still cleaning the workspace on actual retries
     if (attempt > 1) {
-      await cleanWorkspace(sourceDir, `${description} (retry cleanup)`);
+      const cleanResult = await cleanWorkspace(sourceDir, `${description} (retry cleanup)`);
+      if (!cleanResult.success) {
+        if (isVerbose) {
+          console.log(chalk.yellow(`    ⚠️ Workspace cleanup failed, continuing anyway: ${cleanResult.error.message}`));
+        }
+      }
     }
 
     // Check for uncommitted changes with retry logic
-    await executeGitCommandWithRetry(['git', 'status', '--porcelain'], sourceDir, 'status check');
+    const status = await executeGitCommandWithRetry(['git', 'status', '--porcelain'], sourceDir, 'status check');
+    const hasChanges = status.stdout.trim().length > 0;
 
     // Stage changes with retry logic
     await executeGitCommandWithRetry(['git', 'add', '-A'], sourceDir, 'staging changes');
@@ -117,36 +152,89 @@ export const createGitCheckpoint = async (sourceDir, description, attempt) => {
     // Create commit with retry logic
     await executeGitCommandWithRetry(['git', 'commit', '-m', `📍 Checkpoint: ${description} (attempt ${attempt})`, '--allow-empty'], sourceDir, 'creating commit');
 
+    if (isVerbose) {
+      if (hasChanges) {
+        console.log(chalk.blue(`    ✅ Checkpoint created with uncommitted changes staged`));
+      } else {
+        console.log(chalk.blue(`    ✅ Empty checkpoint created (no workspace changes)`));
+      }
+    }
     return { success: true };
   } catch (error) {
+    if (isVerbose) {
+      console.log(chalk.yellow(`    ⚠️ Checkpoint creation failed after retries: ${error.message}`));
+    }
     return { success: false, error };
   }
 };
 
 export const commitGitSuccess = async (sourceDir, description) => {
+  const isVerbose = isVerboseMode();
+  if (isVerbose) {
+    console.log(chalk.green(`    💾 Committing successful results for ${description}`));
+  }
   try {
+    // Check what we're about to commit with retry logic
+    const status = await executeGitCommandWithRetry(['git', 'status', '--porcelain'], sourceDir, 'status check for success commit');
+    const changes = status.stdout.trim().split('\n').filter(line => line.length > 0);
+
     // Stage changes with retry logic
     await executeGitCommandWithRetry(['git', 'add', '-A'], sourceDir, 'staging changes for success commit');
 
     // Create success commit with retry logic
     await executeGitCommandWithRetry(['git', 'commit', '-m', `✅ ${description}: completed successfully`, '--allow-empty'], sourceDir, 'creating success commit');
 
+    if (isVerbose) {
+      if (changes.length > 0) {
+        console.log(chalk.green(`    ✅ Success commit created with ${changes.length} file changes:`));
+        changes.slice(0, 5).forEach(change => console.log(chalk.gray(`       ${change}`)));
+        if (changes.length > 5) {
+          console.log(chalk.gray(`       ... and ${changes.length - 5} more files`));
+        }
+      } else {
+        console.log(chalk.green(`    ✅ Empty success commit created (agent made no file changes)`));
+      }
+    }
     return { success: true };
   } catch (error) {
+    if (isVerbose) {
+      console.log(chalk.yellow(`    ⚠️ Success commit failed after retries: ${error.message}`));
+    }
     return { success: false, error };
   }
 };
 
 export const rollbackGitWorkspace = async (sourceDir, reason = 'retry preparation') => {
+  const isVerbose = isVerboseMode();
+  if (isVerbose) {
+    console.log(chalk.yellow(`    🔄 Rolling back workspace for ${reason}`));
+  }
   try {
+    // Show what we're about to remove with retry logic
+    const status = await executeGitCommandWithRetry(['git', 'status', '--porcelain'], sourceDir, 'status check for rollback');
+    const changes = status.stdout.trim().split('\n').filter(line => line.length > 0);
+
     // Reset to HEAD with retry logic
     await executeGitCommandWithRetry(['git', 'reset', '--hard', 'HEAD'], sourceDir, 'hard reset for rollback');
 
     // Clean untracked files with retry logic
     await executeGitCommandWithRetry(['git', 'clean', '-fd'], sourceDir, 'cleaning untracked files for rollback');
 
+    if (isVerbose) {
+      if (changes.length > 0) {
+        console.log(chalk.yellow(`    ✅ Rollback completed - removed ${changes.length} contaminated changes:`));
+        changes.slice(0, 3).forEach(change => console.log(chalk.gray(`       ${change}`)));
+        if (changes.length > 3) {
+          console.log(chalk.gray(`       ... and ${changes.length - 3} more files`));
+        }
+      } else {
+        console.log(chalk.yellow(`    ✅ Rollback completed - no changes to remove`));
+      }
+    }
     return { success: true };
   } catch (error) {
+    // Rollback failures are critical - always log to stderr regardless of verbosity
+    console.error(chalk.red(`    ❌ Rollback failed after retries: ${error.message}`));
     return { success: false, error };
   }
 };

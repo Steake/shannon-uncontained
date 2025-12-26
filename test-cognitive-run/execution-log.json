@@ -1,0 +1,418 @@
+[
+  {
+    "agent": "SubdomainHunterAgent",
+    "timestamp": "2025-12-24T03:29:07.643Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 3183,
+      "network_requests": 1,
+      "tokens_used": 0,
+      "tool_invocations": 1,
+      "events_emitted": 91,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "SitemapAgent",
+    "timestamp": "2025-12-24T03:29:10.103Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 5637,
+      "network_requests": 8,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 3,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "OpenAPIDiscoveryAgent",
+    "timestamp": "2025-12-24T03:29:17.219Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 12560,
+      "network_requests": 21,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "WAFDetector",
+    "timestamp": "2025-12-24T03:29:19.095Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 1832,
+      "network_requests": 1,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 1,
+      "claims_emitted": 1
+    }
+  },
+  {
+    "agent": "TechFingerprinterAgent",
+    "timestamp": "2025-12-24T03:29:45.767Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 28503,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 2,
+      "events_emitted": 47,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "NetReconAgent",
+    "timestamp": "2025-12-24T03:29:54.605Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 37378,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 1,
+      "events_emitted": 4,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "CrawlerAgent",
+    "timestamp": "2025-12-24T03:30:55.837Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 98572,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 2,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "BrowserCrawlerAgent",
+    "timestamp": "2025-12-24T03:31:23.072Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 125806,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 63,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "JSHarvesterAgent",
+    "timestamp": "2025-12-24T03:31:23.082Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 8,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "ContentDiscoveryAgent",
+    "timestamp": "2025-12-24T03:31:23.127Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 51,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 1,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "SecretScannerAgent",
+    "timestamp": "2025-12-24T03:31:24.375Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 1296,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 1,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "APIDiscovererAgent",
+    "timestamp": "2025-12-24T03:31:26.391Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 3317,
+      "network_requests": 18,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "CORSProbeAgent",
+    "timestamp": "2025-12-24T03:31:42.387Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 19310,
+      "network_requests": 71,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "MetasploitRecon",
+    "timestamp": "2025-12-24T03:31:48.749Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 25666,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 1,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "ArchitectInferAgent",
+    "timestamp": "2025-12-24T03:31:49.219Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 469,
+      "network_requests": 0,
+      "tokens_used": 1000,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "AuthFlowAnalyzer",
+    "timestamp": "2025-12-24T03:31:49.598Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 379,
+      "network_requests": 0,
+      "tokens_used": 1000,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "DataFlowMapper",
+    "timestamp": "2025-12-24T03:31:49.610Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 11,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "BusinessLogicAgent",
+    "timestamp": "2025-12-24T03:31:49.879Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 268,
+      "network_requests": 0,
+      "tokens_used": 1500,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "VulnHypothesizer",
+    "timestamp": "2025-12-24T03:31:50.176Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 296,
+      "network_requests": 0,
+      "tokens_used": 2000,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "SecurityHeaderAnalyzer",
+    "timestamp": "2025-12-24T03:31:50.434Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 258,
+      "network_requests": 1,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 3,
+      "claims_emitted": 3
+    }
+  },
+  {
+    "agent": "TLSAnalyzer",
+    "timestamp": "2025-12-24T03:31:50.527Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 92,
+      "network_requests": 1,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "XSSValidatorAgent",
+    "timestamp": "2025-12-24T03:31:50.551Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 15,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 1,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "CommandInjectionAgent",
+    "timestamp": "2025-12-24T03:31:50.558Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 20,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 1,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "MetasploitExploit",
+    "timestamp": "2025-12-24T03:31:50.976Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 435,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 1,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "NucleiScanAgent",
+    "timestamp": "2025-12-24T03:31:51.177Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 649,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 1,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "SQLmapAgent",
+    "timestamp": "2025-12-24T03:31:53.313Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 2783,
+      "network_requests": 1,
+      "tokens_used": 0,
+      "tool_invocations": 1,
+      "events_emitted": 1,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "GroundTruthAgent",
+    "timestamp": "2025-12-24T03:31:53.315Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 1,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "SourceGenAgent",
+    "timestamp": "2025-12-24T03:32:42.312Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 48997,
+      "network_requests": 0,
+      "tokens_used": 18000,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "SchemaGenAgent",
+    "timestamp": "2025-12-24T03:32:42.317Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 5,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "TestGenAgent",
+    "timestamp": "2025-12-24T03:32:42.321Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 4,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "DocumentationAgent",
+    "timestamp": "2025-12-24T03:32:42.326Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 5,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  },
+  {
+    "agent": "BlackboxConfigGenAgent",
+    "timestamp": "2025-12-24T03:32:42.333Z",
+    "success": true,
+    "summary": {
+      "duration_ms": 7,
+      "network_requests": 0,
+      "tokens_used": 0,
+      "tool_invocations": 0,
+      "events_emitted": 0,
+      "claims_emitted": 0
+    }
+  }
+]

@@ -35,15 +35,54 @@ const DEFAULT_ROUTING = {
  */
 export class LLMClient {
     constructor(options = {}) {
+        const provider = process.env.LLM_PROVIDER || 'openai';
+
+        // API key - select based on provider for correct matching
+        let apiKey = process.env.LLM_API_KEY;
+        if (!apiKey) {
+            const providerKeys = {
+                openrouter: process.env.OPENROUTER_API_KEY,
+                anthropic: process.env.ANTHROPIC_API_KEY,
+                openai: process.env.OPENAI_API_KEY
+            };
+            apiKey = providerKeys[provider] || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY;
+        }
+
+        // Base URL - auto-detect for OpenRouter
+        let baseUrl = process.env.LLM_BASE_URL;
+        if (!baseUrl && provider === 'openrouter') {
+            baseUrl = 'https://openrouter.ai/api/v1';
+        }
+
         this.options = {
-            provider: process.env.LLM_PROVIDER || 'openai',
-            baseUrl: process.env.LLM_BASE_URL,
-            apiKey: process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY,
+            provider,
+            baseUrl,
+            apiKey,
             defaultModel: process.env.LLM_MODEL || 'gpt-4o',
             ...options,
         };
 
         this.routing = { ...DEFAULT_ROUTING, ...options.routing };
+    }
+
+    /**
+     * Check if LLM is available (API key configured)
+     * @returns {boolean} True if API key is configured
+     */
+    isAvailable() {
+        return !!this.options.apiKey;
+    }
+
+    /**
+     * Get the configured provider and model for display
+     * @returns {object} { provider, model, hasApiKey }
+     */
+    getConfig() {
+        return {
+            provider: this.options.provider,
+            model: this.options.defaultModel,
+            hasApiKey: this.isAvailable(),
+        };
     }
 
     /**
@@ -175,17 +214,27 @@ Respond ONLY with the JSON, no other text or markdown.`;
     }
 
     /**
-     * Call OpenAI-compatible API
+     * Call OpenAI-compatible API (also works for OpenRouter with extra headers)
      */
     async callOpenAI(prompt, options) {
         const baseUrl = this.options.baseUrl || 'https://api.openai.com/v1';
+        const isOpenRouter = baseUrl.includes('openrouter.ai');
+
+        // Build headers - OpenRouter requires additional headers
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.options.apiKey}`,
+        };
+
+        // OpenRouter-specific headers (required for auth)
+        if (isOpenRouter) {
+            headers['HTTP-Referer'] = 'https://github.com/shannon-security';
+            headers['X-Title'] = 'Shannon Security Scanner';
+        }
 
         const response = await this.fetchWithRetry(`${baseUrl}/chat/completions`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.options.apiKey}`,
-            },
+            headers,
             body: JSON.stringify({
                 model: options.model,
                 messages: [{ role: 'user', content: prompt }],

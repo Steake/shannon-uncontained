@@ -205,13 +205,36 @@ ${Object.entries(byMethod).map(([m, eps]) => `| ${m} | ${eps.length} |`).join('\
 
     /**
      * Generate architecture documentation
+     * Uses LLM to infer architecture when model entities are sparse
      */
     async generateArchDocs(ctx, target) {
         const components = ctx.targetModel.getEntitiesByType('component');
         const services = ctx.targetModel.getEntitiesByType('service');
         const authFlows = ctx.targetModel.getEntitiesByType('auth_flow');
         const workflows = ctx.targetModel.getEntitiesByType('workflow');
+        const endpoints = ctx.targetModel.getEndpoints();
+        const claims = Array.from(ctx.ledger.claims.values());
 
+        // Check if we have enough structured data
+        const hasStructuredData = components.length > 0 || authFlows.length > 0 || workflows.length > 0;
+
+        // If sparse, use LLM to infer architecture from endpoints and claims
+        if (!hasStructuredData && endpoints.length > 0 && this.llm?.isAvailable()) {
+            try {
+                const archDoc = await this.generateArchWithLLM(ctx, target, endpoints, claims);
+                if (archDoc) {
+                    ctx.recordTokens(archDoc.tokens_used || 0);
+                    return archDoc.content;
+                } else {
+                    console.warn('[DocumentationAgent] LLM returned null for architecture generation');
+                }
+            } catch (e) {
+                // Fall back to template if LLM fails
+                console.warn('[DocumentationAgent] LLM architecture generation failed:', e.message);
+            }
+        }
+
+        // Template-based generation (fallback or when structured data exists)
         let doc = `# Architecture Documentation
 
 > Inferred architecture for ${target}
@@ -261,6 +284,64 @@ ${Object.entries(byMethod).map(([m, eps]) => `| ${m} | ${eps.length} |`).join('\
         }
 
         return doc;
+    }
+
+    /**
+     * Use LLM to infer architecture from endpoints and claims
+     */
+    async generateArchWithLLM(ctx, target, endpoints, claims) {
+        // Summarize endpoints for LLM
+        const endpointSummary = endpoints.slice(0, 30).map(e =>
+            `${e.attributes.method} ${e.attributes.path}`
+        ).join('\n');
+
+        // Summarize claims
+        const claimSummary = claims.slice(0, 10).map(c =>
+            `- ${c.claim_type}: ${c.subject} (${c.predicate ? JSON.stringify(c.predicate).slice(0, 100) : 'N/A'})`
+        ).join('\n');
+
+        const prompt = `You are analyzing a web application's architecture based on discovered endpoints and security claims.
+
+Target: ${target}
+
+## Discovered Endpoints (${endpoints.length} total):
+${endpointSummary}
+
+## Security Claims:
+${claimSummary || 'No claims yet'}
+
+Based on this evidence, write a concise ARCHITECTURE.md document that covers:
+
+1. **Technology Stack** - What frameworks/platforms are likely in use (e.g., Next.js if /_next/ paths found)
+2. **API Structure** - How the API is organized (RESTful patterns, versioning, namespaces)
+3. **Security Posture** - WAF detection, CORS, authentication patterns observed
+4. **Architecture Diagram** - A mermaid diagram showing the high-level architecture
+
+Keep it concise but insightful. Use markdown formatting.`;
+
+        const response = await this.llm.generate(prompt, {
+            capability: LLM_CAPABILITIES.ARCHITECTURE_ANALYSIS || LLM_CAPABILITIES.REASONING,
+            maxTokens: 2000,
+        });
+
+        if (response.success) {
+            return {
+                content: `# Architecture Documentation
+
+> LLM-inferred architecture for ${target}
+
+${response.content}
+
+---
+*Generated using LLM analysis of ${endpoints.length} endpoints*
+`,
+                tokens_used: response.tokens_used || 0,
+            };
+        }
+
+        // Log failure reason
+        console.warn('[DocumentationAgent] LLM API call failed:', response.error || 'unknown error');
+        return null;
     }
 
     /**
