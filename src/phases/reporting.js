@@ -8,7 +8,11 @@ import { fs, path } from 'zx';
 import chalk from 'chalk';
 import { PentestError } from '../error-handling.js';
 
-// Pure function: Assemble final report from specialist deliverables
+/**
+ * Assemble final report from specialist deliverables
+ * @param {string} sourceDir - Directory containing deliverable files
+ * @returns {Promise<string>} Final report content (may be empty string if no deliverables found)
+ */
 export async function assembleFinalReport(sourceDir) {
   const deliverableFiles = [
     { name: 'Injection', path: 'injection_exploitation_evidence.md', required: false },
@@ -36,7 +40,12 @@ export async function assembleFinalReport(sourceDir) {
       if (file.required) {
         throw error;
       }
-      console.log(chalk.yellow(`⚠️ Could not read ${file.path}: ${error.message}`));
+      // Distinguish between file not found and other filesystem errors
+      if (error.code === 'ENOENT') {
+        console.log(chalk.gray(`⏭️  No ${file.name} deliverable found`));
+      } else {
+        console.log(chalk.yellow(`⚠️ Could not read ${file.path}: ${error.message}`));
+      }
     }
   }
 

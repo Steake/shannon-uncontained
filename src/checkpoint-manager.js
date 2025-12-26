@@ -14,7 +14,6 @@ import {
   AGENTS,
   PHASES,
   validateAgent,
-  validateAgentRange,
   validatePhase,
   checkPrerequisites,
   getNextAgent,
