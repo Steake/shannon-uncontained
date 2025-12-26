@@ -233,8 +233,8 @@ export const rollbackGitWorkspace = async (sourceDir, reason = 'retry preparatio
     }
     return { success: true };
   } catch (error) {
-    // Rollback failures are critical - always log regardless of verbosity
-    console.log(chalk.red(`    ❌ Rollback failed after retries: ${error.message}`));
+    // Rollback failures are critical - always log to stderr regardless of verbosity
+    console.error(chalk.red(`    ❌ Rollback failed after retries: ${error.message}`));
     return { success: false, error };
   }
 };
