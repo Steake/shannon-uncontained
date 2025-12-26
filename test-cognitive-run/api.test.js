@@ -8,8 +8,6 @@
 const request = require('supertest');
 const app = require('../app'); // Adjust path as needed
 
-const BASE_URL = 'https://REDACTED_DOMAIN';
-
 describe('API Endpoints', () => {
 
   describe('en-gb', () => {
