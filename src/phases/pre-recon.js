@@ -190,7 +190,7 @@ async function runPreReconWave2(webUrl, sourceDir, toolAvailability, pipelineTes
 
 // Pure function: Stitch together pre-recon outputs and save to file
 async function stitchPreReconOutputs(outputs, sourceDir) {
-  const [nmap, subfinder, whatweb, _naabu, ...additionalScans] = outputs;
+  const [nmap, subfinder, whatweb, ...additionalScans] = outputs;
 
   // Try to read the code analysis deliverable file
   let codeAnalysisContent;
@@ -221,10 +221,6 @@ ${scan.output}
 
   const report = `
 # Pre-Reconnaissance Report
-
-## Port Discovery (naabu)
-Status: ${naabu?.status || 'Skipped'}
-${naabu?.output || naabu || 'No output'}
 
 ## Network Scanning (nmap)
 Status: ${nmap?.status || 'Skipped'}
@@ -282,7 +278,6 @@ export async function executePreReconPhase(webUrl, sourceDir, variables, config,
     wave1Results.nmap,
     wave1Results.subfinder,
     wave1Results.whatweb,
-    wave1Results.naabu,
     wave1Results.codeAnalysis,
     ...(wave2Results.schemathesis ? [wave2Results.schemathesis] : [])
   ];
