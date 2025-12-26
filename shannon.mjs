@@ -247,7 +247,8 @@ osintCmd
       ({ AgentContext } = await import('./src/local-source-generator/v2/agents/base-agent.js'));
       ({ fs } = await import('zx'));
     } catch (error) {
-      console.error(chalk.red('❌ Failed to load OSINT dependencies. Please ensure all required packages are installed.'));
+      console.error(chalk.red('❌ Failed to load OSINT dependencies.'));
+      console.error(chalk.red('Please ensure all required packages are installed by running: npm install'));
       console.error(chalk.red(`Details: ${error.message}`));
       // Check for verbose flag from global options
       if (program.opts().verbose && error.stack) {

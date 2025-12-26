@@ -116,7 +116,8 @@ export class EmailOSINTAgent extends BaseAgent {
             }));
         } catch (err) {
             // Domain might not have MX records; on any DNS error we fall back to an empty list.
-            console.log(chalk.gray(`EmailOSINTAgent: MX lookup failed for domain "${domain}": ${err?.message ?? err}`));
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            console.log(chalk.gray(`EmailOSINTAgent: MX lookup failed for domain "${domain}": ${errorMessage}`));
             results.mx_records = [];
         }
 
@@ -260,8 +261,13 @@ export class EmailOSINTAgent extends BaseAgent {
             ctx.recordNetworkRequest();
             try {
                 const hunterResponse = await fetch(
-                    `https://api.hunter.io/v2/email-verifier?email=${encodeURIComponent(email)}&api_key=${hunterApiKey}`,
-                    { headers: { 'Accept': 'application/json' } }
+                    `https://api.hunter.io/v2/email-verifier?email=${encodeURIComponent(email)}`,
+                    { 
+                        headers: { 
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${hunterApiKey}`
+                        } 
+                    }
                 );
 
                 if (hunterResponse.ok) {
@@ -313,9 +319,15 @@ export class EmailOSINTAgent extends BaseAgent {
 
     /**
      * Validate email format
+     * Improved pattern that:
+     * - Local part: any non-whitespace, non-@ characters
+     * - Domain: one or more labels separated by dots
+     *   * each label starts and ends with a letter/number (including Unicode)
+     *   * hyphens allowed only internally
+     *   * prevents domains starting with a hyphen
      */
     isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const emailRegex = /^[^\s@]+@[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?(?:\.[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?)+$/u;
         return emailRegex.test(email);
     }
 
@@ -328,7 +340,8 @@ export class EmailOSINTAgent extends BaseAgent {
 
         for (const line of lines) {
             // Holehe format: [+] service: email exists
-            const match = line.match(/\[\+\]\s*(\w+)/i);
+            // Match service names including hyphens and dots (e.g., "linkedin-jobs", "github.com")
+            const match = line.match(/\[\+\]\s*([\w.-]+)/i);
             if (match) {
                 accounts.push({
                     service: match[1],

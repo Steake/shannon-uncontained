@@ -17,11 +17,9 @@ export async function executeGeneratedTests(target, workspace, options = {}) {
         // Run the full Shannon pentest pipeline on the generated source
         // effectively treating the LSG output as the "Done Recon" state if skipRecon is true
         // By default, do not skip recon unless explicitly requested via options.skipRecon
-        const shouldSkipRecon = options.skipRecon === true;
-
         const result = await runLegacyPentest(target, workspace, {
             disableLoader: false, // Show progress
-            skipRecon: shouldSkipRecon,
+            skipRecon: options.skipRecon === true,
             // Pass any other config derived from CLI if needed
         });
 
