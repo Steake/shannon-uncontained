@@ -40,12 +40,8 @@ export async function assembleFinalReport(sourceDir) {
       if (file.required) {
         throw error;
       }
-      // Distinguish between file not found and other filesystem errors
-      if (error.code === 'ENOENT') {
-        console.log(chalk.gray(`⏭️  No ${file.name} deliverable found`));
-      } else {
-        console.log(chalk.yellow(`⚠️ Could not read ${file.path}: ${error.message}`));
-      }
+      // Warn about any filesystem errors encountered while reading optional deliverables
+      console.log(chalk.yellow(`⚠️ Could not read ${file.path}: ${error.message}`));
     }
   }
 
