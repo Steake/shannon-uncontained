@@ -37,6 +37,12 @@ class GitSemaphore {
 
 const gitSemaphore = new GitSemaphore();
 
+/**
+ * Check if verbose logging is enabled for git operations.
+ * Returns true if either global.SHANNON_VERBOSE or process.env.DEBUG is set.
+ */
+const isVerboseMode = () => global.SHANNON_VERBOSE || process.env.DEBUG;
+
 // Execute git commands with retry logic for index.lock conflicts
 export const executeGitCommandWithRetry = async (commandArgs, sourceDir, description, maxRetries = 5) => {
   await gitSemaphore.acquire();
@@ -79,7 +85,7 @@ export const executeGitCommandWithRetry = async (commandArgs, sourceDir, descrip
 
 // Pure functions for Git workspace management
 const cleanWorkspace = async (sourceDir, reason = 'clean start') => {
-  const isVerbose = global.SHANNON_VERBOSE || process.env.DEBUG;
+  const isVerbose = isVerboseMode();
   if (isVerbose) {
     console.log(chalk.blue(`    🧹 Cleaning workspace for ${reason}`));
   }
@@ -120,7 +126,7 @@ const cleanWorkspace = async (sourceDir, reason = 'clean start') => {
 };
 
 export const createGitCheckpoint = async (sourceDir, description, attempt) => {
-  const isVerbose = global.SHANNON_VERBOSE || process.env.DEBUG;
+  const isVerbose = isVerboseMode();
   if (isVerbose) {
     console.log(chalk.blue(`    📍 Creating checkpoint for ${description} (attempt ${attempt})`));
   }
@@ -163,7 +169,7 @@ export const createGitCheckpoint = async (sourceDir, description, attempt) => {
 };
 
 export const commitGitSuccess = async (sourceDir, description) => {
-  const isVerbose = global.SHANNON_VERBOSE || process.env.DEBUG;
+  const isVerbose = isVerboseMode();
   if (isVerbose) {
     console.log(chalk.green(`    💾 Committing successful results for ${description}`));
   }
@@ -199,7 +205,7 @@ export const commitGitSuccess = async (sourceDir, description) => {
 };
 
 export const rollbackGitWorkspace = async (sourceDir, reason = 'retry preparation') => {
-  const isVerbose = global.SHANNON_VERBOSE || process.env.DEBUG;
+  const isVerbose = isVerboseMode();
   if (isVerbose) {
     console.log(chalk.yellow(`    🔄 Rolling back workspace for ${reason}`));
   }
@@ -227,6 +233,7 @@ export const rollbackGitWorkspace = async (sourceDir, reason = 'retry preparatio
     }
     return { success: true };
   } catch (error) {
+    // Rollback failures are critical - always log regardless of verbosity
     console.log(chalk.red(`    ❌ Rollback failed after retries: ${error.message}`));
     return { success: false, error };
   }

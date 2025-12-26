@@ -23,6 +23,20 @@ export const EMAIL_EVENT_TYPES = {
     SOCIAL_ACCOUNT: 'social_account',
 };
 
+/**
+ * Email validation regex with improved domain validation.
+ * Pattern structure:
+ * - Local part: [^\s@]+ (any non-whitespace, non-@ characters)
+ * - @ separator
+ * - Domain labels: [\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?
+ *   * Must start and end with letter/number (Unicode supported)
+ *   * Hyphens allowed internally (max 63 chars per label)
+ *   * Prevents domains starting with hyphen
+ * - Multiple domain labels separated by dots
+ * - Requires at least 2-level domain (e.g., example.com)
+ */
+const EMAIL_VALIDATION_REGEX = /^[^\s@]+@[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?(?:\.[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?)+$/u;
+
 export class EmailOSINTAgent extends BaseAgent {
     constructor(options = {}) {
         super('EmailOSINTAgent', options);
@@ -316,17 +330,10 @@ export class EmailOSINTAgent extends BaseAgent {
     }
 
     /**
-     * Validate email format
-     * Improved pattern that:
-     * - Local part: any non-whitespace, non-@ characters
-     * - Domain: one or more labels separated by dots
-     *   * each label starts and ends with a letter/number (including Unicode)
-     *   * hyphens allowed only internally
-     *   * prevents domains starting with a hyphen
+     * Validate email format using the module-level EMAIL_VALIDATION_REGEX constant.
      */
     isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?(?:\.[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?)+$/u;
-        return emailRegex.test(email);
+        return EMAIL_VALIDATION_REGEX.test(email);
     }
 
     /**
