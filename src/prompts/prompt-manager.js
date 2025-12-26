@@ -128,7 +128,11 @@ async function interpolateVariables(template, variables, config = null) {
       );
     }
 
-    if (!variables || !variables.webUrl || !variables.repoPath) {
+    if (
+      !variables ||
+      typeof variables.webUrl !== 'string' ||
+      typeof variables.repoPath !== 'string'
+    ) {
       throw new PentestError(
         'Variables must include webUrl and repoPath',
         'validation',

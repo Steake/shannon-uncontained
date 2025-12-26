@@ -115,9 +115,9 @@ export class EmailOSINTAgent extends BaseAgent {
             }));
         } catch (err) {
             // Domain might not have MX records; on any DNS error we fall back to an empty list.
-            // Log at debug level so unexpected failures can be investigated without affecting flow.
+            // Log as warning so DNS failures are visible without breaking flow.
             // eslint-disable-next-line no-console
-            console.debug(`EmailOSINTAgent: MX lookup failed for domain "${domain}":`, err?.message ?? err);
+            console.log(chalk.yellow(`⚠️  EmailOSINTAgent: MX lookup failed for domain "${domain}": ${err?.message ?? err}`));
             results.mx_records = [];
         }
 
@@ -167,12 +167,18 @@ export class EmailOSINTAgent extends BaseAgent {
                 // or use the haveibeenpwned-api-key from env if available
                 const hibpApiKey = process.env.HIBP_API_KEY;
 
+                // Validate API key format if provided (basic check for non-empty string)
+                if (hibpApiKey && (typeof hibpApiKey !== 'string' || hibpApiKey.trim().length === 0)) {
+                    // eslint-disable-next-line no-console
+                    console.log(chalk.yellow('⚠️  HIBP_API_KEY is set but appears invalid (empty or wrong type)'));
+                }
+
                 const headers = {
                     'User-Agent': 'Shannon-LSG/2.0',
                     'Accept': 'application/json',
                 };
 
-                if (hibpApiKey) {
+                if (hibpApiKey && hibpApiKey.trim().length > 0) {
                     headers['hibp-api-key'] = hibpApiKey;
                 }
 
@@ -207,14 +213,19 @@ export class EmailOSINTAgent extends BaseAgent {
                 } else if (hibpResponse.status === 404) {
                     // No breaches found - this is good news
                     results.sources_queried.push('haveibeenpwned');
+                } else if (hibpResponse.status === 401) {
+                    // Authentication failed - warn about invalid/missing API key
+                    // eslint-disable-next-line no-console
+                    console.log(chalk.yellow('⚠️  HaveIBeenPwned API key invalid or missing. Set HIBP_API_KEY environment variable for full access.'));
+                } else if (hibpResponse.status === 429) {
+                    // Rate limited
+                    // eslint-disable-next-line no-console
+                    console.log(chalk.yellow('⚠️  HaveIBeenPwned rate limit exceeded. Try again later or use an API key.'));
                 }
-                // 401 = needs API key, 429 = rate limited
             } catch (error) {
-                // HIBP might be unavailable; log at debug level for diagnostics.
-                console.debug('EmailOSINTAgent: HaveIBeenPwned request failed', {
-                    email,
-                    error: error instanceof Error ? error.message : String(error),
-                });
+                // HIBP might be unavailable; log for diagnostics.
+                // eslint-disable-next-line no-console
+                console.log(chalk.gray(`EmailOSINTAgent: HaveIBeenPwned request failed - ${error instanceof Error ? error.message : String(error)}`));
             }
         }
 

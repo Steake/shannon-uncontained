@@ -238,11 +238,26 @@ osintCmd
   .option('--json', 'Output as JSON')
   .option('-o, --output <file>', 'Save results to file')
   .action(async (email, options) => {
-    const { EmailOSINTAgent } = await import('./src/local-source-generator/v2/agents/recon/email-osint-agent.js');
-    const { EvidenceGraph } = await import('./src/local-source-generator/v2/worldmodel/evidence-graph.js');
-    const { EpistemicLedger } = await import('./src/core/EpistemicLedger.js');
-    const { AgentContext } = await import('./src/local-source-generator/v2/agents/base-agent.js');
-    const { fs } = await import('zx');
+    let EmailOSINTAgent;
+    let EvidenceGraph;
+    let EpistemicLedger;
+    let AgentContext;
+    let fs;
+
+    try {
+      ({ EmailOSINTAgent } = await import('./src/local-source-generator/v2/agents/recon/email-osint-agent.js'));
+      ({ EvidenceGraph } = await import('./src/local-source-generator/v2/worldmodel/evidence-graph.js'));
+      ({ EpistemicLedger } = await import('./src/core/EpistemicLedger.js'));
+      ({ AgentContext } = await import('./src/local-source-generator/v2/agents/base-agent.js'));
+      ({ fs } = await import('zx'));
+    } catch (error) {
+      console.error(chalk.red('❌ Failed to load OSINT dependencies. Please ensure all required packages are installed.'));
+      console.error(chalk.red(`Details: ${error.message}`));
+      if (program.opts().verbose && error.stack) {
+        console.error(error.stack);
+      }
+      process.exit(1);
+    }
 
     if (!options.json) {
       console.log(chalk.cyan.bold('🔍 EMAIL OSINT'));
@@ -298,9 +313,16 @@ osintCmd
 
         // Reputation
         if (data.reputation.reputation) {
-          const repColor = data.reputation.reputation === 'high' ? 'green' :
-            data.reputation.reputation === 'medium' ? 'yellow' : 'red';
-          console.log(chalk.bold.blue('⭐ Reputation:'), chalk[repColor](data.reputation.reputation));
+          const reputation = data.reputation.reputation;
+          let coloredReputation;
+          if (reputation === 'high') {
+            coloredReputation = chalk.green(reputation);
+          } else if (reputation === 'medium') {
+            coloredReputation = chalk.yellow(reputation);
+          } else {
+            coloredReputation = chalk.red(reputation);
+          }
+          console.log(chalk.bold.blue('⭐ Reputation:'), coloredReputation);
           if (data.reputation.suspicious) {
             console.log(chalk.yellow('   ⚠️  Suspicious activity detected'));
           }
