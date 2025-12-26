@@ -335,7 +335,8 @@ const runParallelVuln = async (session, pipelineTestingMode, runClaudePromptWith
         const agentCount = Math.max(1, activeAgents.length);
         const steps = Math.max(1, agentCount - 1);
         const adaptiveBase = Math.floor(DEFAULT_TOTAL_STAGGER_MS / steps);
-        return Math.min(Math.max(adaptiveBase, MIN_BASE_STAGGER_MS), MAX_BASE_STAGGER_MS);
+        // For adaptive calculation, don't clamp to MAX_BASE_STAGGER_MS - only enforce minimum
+        return Math.max(adaptiveBase, MIN_BASE_STAGGER_MS);
       })();
 
   // Collect all results without logging individual completions
