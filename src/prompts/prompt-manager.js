@@ -134,7 +134,7 @@ async function interpolateVariables(template, variables, config = null) {
       typeof variables.repoPath !== 'string'
     ) {
       const variableKeys =
-        variables && typeof variables === 'object' ? Object.keys(variables) : [];
+        typeof variables === 'object' ? Object.keys(variables) : [];
       throw new PentestError(
         'Variables must include webUrl and repoPath',
         'validation',
