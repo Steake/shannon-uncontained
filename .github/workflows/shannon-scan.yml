@@ -68,11 +68,12 @@ jobs:
         run: npm ci
 
       - name: Install reconnaissance tools
+        continue-on-error: true
         run: |
-          # Install Go tools
-          go install github.com/tomnomnom/gau/v2/cmd/gau@latest
-          go install github.com/projectdiscovery/katana/cmd/katana@latest
-          go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+          # Install Go tools (continue even if individual tools fail)
+          go install github.com/tomnomnom/gau/v2/cmd/gau@latest || true
+          go install github.com/projectdiscovery/katana/cmd/katana@latest || true
+          go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest || true
           echo "$HOME/go/bin" >> $GITHUB_PATH
           
           # Install system tools
@@ -96,6 +97,7 @@ jobs:
       - name: Generate SARIF Report
         if: always()
         run: |
+          mkdir -p results
           node -e "
             const fs = require('fs');
             const path = require('path');
